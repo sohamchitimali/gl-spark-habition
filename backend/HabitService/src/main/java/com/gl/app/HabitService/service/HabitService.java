@@ -63,6 +63,22 @@ public class HabitService {
     }
 
     /**
+     * Creates a tracking habit linked to a specific group habit for a user.
+     *
+     * @param groupId      the ID of the group
+     * @param groupHabitId the ID of the group habit definition
+     * @param title        the habit title
+     * @param description  optional description
+     * @param userId       the user who is tracking it
+     * @return the saved {@link HabitResponse}
+     */
+    public HabitResponse createGroupTrackingHabit(Long groupId, Long groupHabitId, String title, String description, Long userId) {
+        Habit habit = new Habit(null, title, description, userId, groupId, groupHabitId);
+        Habit saved = habitRepository.save(habit);
+        return toHabitResponse(saved);
+    }
+
+    /**
      * Returns all habits for a user.
      *
      * @param userId the user ID
@@ -177,7 +193,7 @@ public class HabitService {
         completionRepository.save(completion);
 
         int streak = calculateStreak(userId);
-        int coinsEarned = BASE_COINS;
+        int coinsEarned = 1;
         if (streak > 0 && streak % STREAK_BONUS_INTERVAL == 0) {
             coinsEarned += STREAK_BONUS_COINS;
             log.info("Streak milestone {}! Bonus coins awarded to userId={}", streak, userId);

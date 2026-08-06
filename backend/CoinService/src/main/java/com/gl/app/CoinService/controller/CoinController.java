@@ -41,7 +41,7 @@ public class CoinController {
      * @param groupId the group ID
      * @return 200 OK with ranked leaderboard entries
      */
-    @GetMapping("/groups/{groupId}/leaderboard")
+    @GetMapping("/coins/groups/{groupId}/leaderboard")
     public ResponseEntity<LeaderboardResponse> getLeaderboard(@PathVariable Long groupId) {
         return ResponseEntity.ok(coinService.getLeaderboard(groupId));
     }

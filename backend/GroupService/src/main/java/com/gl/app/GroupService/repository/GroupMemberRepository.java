@@ -26,4 +26,12 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
      * @return true if membership exists
      */
     boolean existsByGroupIdAndUserId(Long groupId, Long userId);
+
+    /**
+     * Returns all group memberships for a given user.
+     *
+     * @param userId the user ID
+     * @return list of group members
+     */
+    List<GroupMember> findByUserId(Long userId);
 }

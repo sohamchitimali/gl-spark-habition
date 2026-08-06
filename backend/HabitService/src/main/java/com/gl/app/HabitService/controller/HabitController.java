@@ -45,6 +45,29 @@ public class HabitController {
     }
 
     /**
+     * Creates a tracking record for a group habit.
+     *
+     * @param groupId      the group ID
+     * @param groupHabitId the group habit ID
+     * @param title        the habit title
+     * @param description  optional description
+     * @param userId       the authenticated user ID from gateway header
+     * @return 201 Created with the new habit details
+     */
+    @PostMapping("/habits/group")
+    public ResponseEntity<HabitResponse> createGroupTrackingHabit(
+            @RequestParam Long groupId,
+            @RequestParam Long groupHabitId,
+            @RequestParam String title,
+            @RequestParam(required = false) String description,
+            @RequestHeader("X-User-Id") Long userId) {
+        return new ResponseEntity<>(
+                habitService.createGroupTrackingHabit(groupId, groupHabitId, title, description, userId),
+                HttpStatus.CREATED
+        );
+    }
+
+    /**
      * Returns all habits for the authenticated user.
      *
      * @param userId the authenticated user ID from gateway header

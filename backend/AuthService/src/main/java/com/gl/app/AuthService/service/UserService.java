@@ -9,7 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -35,10 +37,10 @@ public class UserService {
         String refreshToken = jwtUtil.generateRefreshToken();
         user.setRefreshToken(refreshToken);
         
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
 
-        String accessToken = jwtUtil.generateAccessToken(String.valueOf(user.getId()));
-        return new AuthResponseDto(accessToken, refreshToken, user.getId());
+        String accessToken = jwtUtil.generateAccessToken(String.valueOf(savedUser.getId()));
+        return new AuthResponseDto(accessToken, refreshToken, savedUser.getId());
     }
 
     public AuthResponseDto login(AuthRequestDto request) {
@@ -51,10 +53,10 @@ public class UserService {
 
         String refreshToken = jwtUtil.generateRefreshToken();
         user.setRefreshToken(refreshToken);
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
 
-        String accessToken = jwtUtil.generateAccessToken(String.valueOf(user.getId()));
-        return new AuthResponseDto(accessToken, refreshToken, user.getId());
+        String accessToken = jwtUtil.generateAccessToken(String.valueOf(savedUser.getId()));
+        return new AuthResponseDto(accessToken, refreshToken, savedUser.getId());
     }
 
     public AuthResponseDto refresh(String refreshToken) {
@@ -74,5 +76,11 @@ public class UserService {
         userRepository.save(user);
         
         return new AuthResponseDto(newAccessToken, newRefreshToken, user.getId());
+    }
+
+    public List<com.gl.app.AuthService.dto.UserProfileDto> getUsersByIds(List<Long> ids) {
+        return userRepository.findAllById(ids).stream()
+                .map(u -> new com.gl.app.AuthService.dto.UserProfileDto(u.getId(), u.getEmail()))
+                .collect(Collectors.toList());
     }
 }

@@ -149,13 +149,36 @@ public class GroupService {
      * @return populated response DTO
      */
     private GroupResponse toResponse(Group group) {
-        List<Long> memberIds = groupMemberRepository.findByGroupId(group.getId())
-                .stream().map(GroupMember::getUserId).collect(Collectors.toList());
-        List<GroupHabitResponse> habits = groupHabitRepository.findByGroupId(group.getId())
-                .stream().map(h -> new GroupHabitResponse(h.getId(), h.getTitle(), h.getDescription()))
+        List<Long> memberIds = groupMemberRepository.findByGroupId(group.getId()).stream()
+                .map(GroupMember::getUserId)
                 .collect(Collectors.toList());
-        return new GroupResponse(group.getId(), group.getName(), group.getInviteCode(),
-                group.getOwnerId(), memberIds, habits);
+
+        List<GroupHabitResponse> habits = groupHabitRepository.findByGroupId(group.getId()).stream()
+                .map(h -> new GroupHabitResponse(h.getId(), h.getTitle(), h.getDescription()))
+                .collect(Collectors.toList());
+
+        return new GroupResponse(
+                group.getId(),
+                group.getName(),
+                group.getInviteCode(),
+                group.getOwnerId(),
+                memberIds,
+                habits
+        );
+    }
+
+    /**
+     * Returns all groups the given user is a member of.
+     *
+     * @param userId the user ID
+     * @return list of GroupResponses
+     */
+    public List<GroupResponse> getUserGroups(Long userId) {
+        return groupMemberRepository.findByUserId(userId).stream()
+                .map(member -> groupRepository.findById(member.getGroupId()).orElse(null))
+                .filter(group -> group != null)
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
     /**

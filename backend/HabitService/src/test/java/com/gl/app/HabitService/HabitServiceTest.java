@@ -72,7 +72,7 @@ class HabitServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.getHabitId()).isEqualTo(habitId);
         assertThat(response.getCurrentStreak()).isEqualTo(1);
-        assertThat(response.getCoinsEarned()).isEqualTo(10);
+        assertThat(response.getCoinsEarned()).isEqualTo(1);
         verify(completionRepository, times(1)).save(any(HabitCompletion.class));
         verify(coinServiceClient, times(1)).creditCoins(any());
     }

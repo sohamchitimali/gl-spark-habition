@@ -7,6 +7,7 @@ import com.gl.app.AuthService.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/auth")
@@ -28,5 +29,10 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponseDto> refresh(@RequestBody RefreshRequestDto request) {
         return ResponseEntity.ok(userService.refresh(request.getRefreshToken()));
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<List<com.gl.app.AuthService.dto.UserProfileDto>> getUsersByIds(@RequestParam List<Long> ids) {
+        return ResponseEntity.ok(userService.getUsersByIds(ids));
     }
 }

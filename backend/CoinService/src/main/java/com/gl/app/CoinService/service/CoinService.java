@@ -52,11 +52,17 @@ public class CoinService {
         List<Object[]> raw = coinRepository.findLeaderboardByGroupId(groupId);
 
         List<LeaderboardEntry> entries = new ArrayList<>();
+        int currentRank = 1;
+        int previousCoins = -1;
         for (int i = 0; i < raw.size(); i++) {
             Object[] row = raw.get(i);
             Long userId = (Long) row[0];
             Integer totalCoins = ((Number) row[1]).intValue();
-            entries.add(new LeaderboardEntry(i + 1, userId, totalCoins));
+            if (i > 0 && totalCoins < previousCoins) {
+                currentRank = i + 1;
+            }
+            previousCoins = totalCoins;
+            entries.add(new LeaderboardEntry(currentRank, userId, totalCoins));
         }
 
         Long winnerId = entries.isEmpty() ? null : entries.get(0).getUserId();

@@ -95,4 +95,15 @@ public class GroupController {
     public ResponseEntity<GroupResponse> getGroup(@PathVariable Long id) {
         return ResponseEntity.ok(groupService.getGroup(id));
     }
+
+    /**
+     * Retrieves all groups for the authenticated user.
+     *
+     * @param userId the authenticated user's ID injected by the gateway
+     * @return 200 OK with list of groups
+     */
+    @GetMapping
+    public ResponseEntity<java.util.List<GroupResponse>> getUserGroups(@RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(groupService.getUserGroups(userId));
+    }
 }
