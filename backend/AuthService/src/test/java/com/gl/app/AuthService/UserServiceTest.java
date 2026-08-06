@@ -52,7 +52,7 @@ class UserServiceTest {
         when(userRepository.findByEmail("test@habition.com")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("SecurePass123")).thenReturn("hashed_password");
         when(jwtUtil.generateRefreshToken()).thenReturn("refresh-token-xyz");
-        User saved = new User(1L, "test@habition.com", "hashed_password", "refresh-token-xyz");
+        User saved = new User(1L, "test@habition.com", "hashed_password", "refresh-token-xyz", null, null, null, null, null);
         when(userRepository.save(any(User.class))).thenReturn(saved);
         when(jwtUtil.generateAccessToken("1")).thenReturn("access-token-xyz");
 
@@ -75,7 +75,7 @@ class UserServiceTest {
         request.setPassword("Password1");
 
         when(userRepository.findByEmail("existing@habition.com"))
-                .thenReturn(Optional.of(new User(1L, "existing@habition.com", "hash", "rt")));
+                .thenReturn(Optional.of(new User(1L, "existing@habition.com", "hash", "rt", null, null, null, null, null)));
 
         // Act & Assert
         assertThatThrownBy(() -> userService.register(request))
@@ -91,7 +91,7 @@ class UserServiceTest {
         request.setEmail("user@habition.com");
         request.setPassword("password");
 
-        User user = new User(2L, "user@habition.com", "hashed", "old-refresh");
+        User user = new User(2L, "user@habition.com", "hashed", "old-refresh", null, null, null, null, null);
         when(userRepository.findByEmail("user@habition.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("password", "hashed")).thenReturn(true);
         when(jwtUtil.generateRefreshToken()).thenReturn("new-refresh-token");
@@ -114,7 +114,7 @@ class UserServiceTest {
         request.setEmail("user@habition.com");
         request.setPassword("wrong-password");
 
-        User user = new User(2L, "user@habition.com", "hashed", "refresh");
+        User user = new User(2L, "user@habition.com", "hashed", "refresh", null, null, null, null, null);
         when(userRepository.findByEmail("user@habition.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong-password", "hashed")).thenReturn(false);
 

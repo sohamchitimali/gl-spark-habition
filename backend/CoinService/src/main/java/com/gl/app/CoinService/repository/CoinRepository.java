@@ -40,4 +40,12 @@ public interface CoinRepository extends JpaRepository<Coin, Long> {
      */
     @Query("SELECT COALESCE(SUM(c.amount), 0) FROM Coin c WHERE c.userId = :userId AND c.groupId = :groupId")
     Integer sumCoinsByUserIdAndGroupId(@Param("userId") Long userId, @Param("groupId") Long groupId);
+
+    /**
+     * Deletes all coin transactions for a given group.
+     * Used to reset the group leaderboard.
+     *
+     * @param groupId the group ID
+     */
+    void deleteByGroupId(Long groupId);
 }

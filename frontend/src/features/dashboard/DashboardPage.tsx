@@ -7,8 +7,9 @@ import {
   getStreak,
   type Habit, type HabitTask,
 } from '../../api/habitApi';
-import { getUserBalance } from '../../api/coinApi';
 import Navbar from '../../components/Navbar';
+import SpinningCoin3D from '../../components/SpinningCoin3D';
+import habitionCoin from '../../assets/habition_coin.png';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,7 +39,6 @@ const DashboardPage = () => {
   // Stats
   const [streak, setStreak] = useState(0);
   const [personalBest, setPersonalBest] = useState(0);
-  const [coins, setCoins] = useState<number | null>(null);
 
   // Habits
   const [habits, setHabits] = useState<HabitWithTasks[]>([]);
@@ -55,6 +55,9 @@ const DashboardPage = () => {
 
   // Add task inputs per habit (habitId → input value)
   const [taskInputs, setTaskInputs] = useState<Record<number, string>>({});
+
+  // Coin animation
+  const [showCoinAnimation, setShowCoinAnimation] = useState(false);
 
   // Toast
   const [toast, setToast] = useState<string | null>(null);
@@ -74,7 +77,6 @@ const DashboardPage = () => {
       setStreak(r.data.currentStreak);
       setPersonalBest(r.data.personalBest);
     }).catch(() => {});
-    getUserBalance(userId).then(r => setCoins(r.data)).catch(() => {});
   };
 
   useEffect(() => {
@@ -140,10 +142,14 @@ const DashboardPage = () => {
       loadStats(); // refresh coins
 
       const allDone = updatedHabits.every(h => h.completedToday);
+      
+      setShowCoinAnimation(true);
+      setTimeout(() => setShowCoinAnimation(false), 2500);
+
       if (allDone) {
-        showToast(`🔥 All habits done! Streak is now ${res.data.currentStreak} day${res.data.currentStreak !== 1 ? 's' : ''}!`);
+        showToast(`🎉 All habits done! Streak is now ${res.data.currentStreak} day${res.data.currentStreak !== 1 ? 's' : ''}!`);
       } else {
-        showToast(`+${res.data.coinsEarned} 🪙 — keep going!`);
+        showToast(`+${res.data.coinsEarned} coins earned!`);
       }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -220,7 +226,7 @@ const DashboardPage = () => {
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
           {/* Streak */}
           <div className="col-span-2 rounded-2xl p-5 animate-fade-up delay-100"
             style={{ background: 'linear-gradient(135deg, #26215C, #534AB7)', border: '1px solid rgba(83,74,183,0.5)' }}>
@@ -230,7 +236,7 @@ const DashboardPage = () => {
                 <p className="text-4xl font-bold text-white">{streak} <span className="text-2xl">🔥</span></p>
                 <p className="text-xs mt-1" style={{ color: '#AFA9EC' }}>Personal best: {personalBest} days</p>
               </div>
-              <div className="text-5xl animate-flame select-none">🔥</div>
+              <div className="text-5xl select-none">🔥</div>
             </div>
           </div>
 
@@ -245,16 +251,6 @@ const DashboardPage = () => {
               <div className="h-full rounded-full transition-all"
                 style={{ width: `${completionRate}%`, background: 'linear-gradient(90deg, #7F77DD, #534AB7)' }} />
             </div>
-          </div>
-
-          {/* Coins */}
-          <div className="rounded-2xl p-5 animate-fade-up delay-300"
-            style={{ background: '#2C2C2A', border: '1px solid #363634' }}>
-            <p className="text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Coins</p>
-            <p className="text-3xl font-bold" style={{ color: '#F0997B' }}>
-              {coins !== null ? coins : '—'} <span className="text-2xl">🪙</span>
-            </p>
-            <p className="text-xs mt-1" style={{ color: '#B4B2A9' }}>total earned</p>
           </div>
         </div>
 
@@ -345,14 +341,8 @@ const DashboardPage = () => {
                         )}
                       </div>
 
-                      {/* Right side: coin badge or chevron */}
+                      {/* Right side: chevron */}
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {habit.completedToday && (
-                          <span className="text-xs font-medium px-2 py-1 rounded-full"
-                            style={{ background: 'rgba(216,90,48,0.2)', color: '#F0997B' }}>
-                            +10 🪙
-                          </span>
-                        )}
                         {/* Delete habit button */}
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDeleteHabit(habit.id); }}
@@ -516,6 +506,15 @@ const DashboardPage = () => {
           </Link>
         </div>
       </div>
+
+      {/* Show spinning coin on complete */}
+      {showCoinAnimation && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="animate-coin-pop" style={{ transform: 'scale(1.5)' }}>
+            <SpinningCoin3D />
+          </div>
+        </div>
+      )}
 
       {/* ── Create Habit Modal ── */}
       {showCreateModal && (

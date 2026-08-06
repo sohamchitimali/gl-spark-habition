@@ -7,14 +7,8 @@ const Navbar = () => {
   const { userId, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [coins, setCoins] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    if (userId) {
-      getUserBalance(userId).then(r => setCoins(r.data)).catch(() => {});
-    }
-  }, [userId]);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -58,24 +52,38 @@ const Navbar = () => {
 
       {/* Right side */}
       <div className="flex items-center gap-3">
-        {/* Coin badge */}
-        {coins !== null && (
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold"
-            style={{ background: 'rgba(216,90,48,0.15)', color: '#F0997B', border: '1px solid rgba(216,90,48,0.3)' }}>
-            🪙 {coins}
-          </div>
-        )}
+        {/* Avatar / Profile Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#534AB7] focus:ring-offset-[#2C2C2A]"
+            style={{ background: 'linear-gradient(135deg, #534AB7, #3C3489)', color: '#fff' }}
+            title="Profile Menu"
+          >
+            {userId?.toString().slice(0, 1) ?? 'U'}
+          </button>
 
-        {/* Avatar / logout */}
-        <button
-          id="navbar-logout"
-          onClick={handleLogout}
-          className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all hover:opacity-80"
-          style={{ background: 'linear-gradient(135deg, #534AB7, #3C3489)', color: '#fff' }}
-          title="Logout"
-        >
-          {userId?.toString().slice(0, 1) ?? 'U'}
-        </button>
+          {dropdownOpen && (
+            <div className="absolute right-0 mt-2 w-48 rounded-xl shadow-lg py-1 z-50 animate-fade-up"
+              style={{ background: '#2C2C2A', border: '1px solid #363634' }}>
+              <Link
+                to="/profile"
+                className="block px-4 py-2 text-sm transition-colors hover:bg-white/5"
+                style={{ color: '#F1EFE8' }}
+                onClick={() => setDropdownOpen(false)}
+              >
+                Profile
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="block w-full text-left px-4 py-2 text-sm transition-colors hover:bg-white/5"
+                style={{ color: '#F0997B' }}
+              >
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Mobile hamburger */}
         <button

@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Business logic for coin crediting, leaderboard calculation, and competition finalization.
@@ -99,5 +100,17 @@ public class CoinService {
      */
     public Integer getTotalCoins(Long userId) {
         return coinRepository.sumCoinsByUserId(userId);
+    }
+
+    /**
+     * Resets the leaderboard for a specific group by deleting all coin transactions
+     * associated with that group.
+     *
+     * @param groupId the group ID
+     */
+    @Transactional
+    public void resetGroupCoins(Long groupId) {
+        log.info("Resetting coins for groupId={}", groupId);
+        coinRepository.deleteByGroupId(groupId);
     }
 }

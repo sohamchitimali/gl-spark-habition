@@ -51,10 +51,10 @@ class GroupServiceTest {
         request.setName("Morning Warriors");
         Long userId = 1L;
 
-        Group savedGroup = new Group(1L, "Morning Warriors", "ABCD1234", userId, null, null, false);
+        Group savedGroup = new Group(1L, "Morning Warriors", "ABCD1234", userId, null, null, false, null, null);
         when(groupRepository.save(any(Group.class))).thenReturn(savedGroup);
         when(groupMemberRepository.save(any(GroupMember.class))).thenReturn(new GroupMember());
-        when(groupMemberRepository.findByGroupId(1L)).thenReturn(List.of(new GroupMember(1L, 1L, userId, null)));
+        when(groupMemberRepository.findByGroupId(1L)).thenReturn(List.of(new GroupMember(1L, 1L, userId, null, true)));
         when(groupHabitRepository.findByGroupId(1L)).thenReturn(List.of());
 
         // Act
@@ -76,11 +76,11 @@ class GroupServiceTest {
         request.setInviteCode("ABCD1234");
         Long userId = 2L;
 
-        Group group = new Group(1L, "Morning Warriors", "ABCD1234", 1L, null, null, false);
+        Group group = new Group(1L, "Morning Warriors", "ABCD1234", 1L, null, null, false, null, null);
         when(groupRepository.findByInviteCode("ABCD1234")).thenReturn(Optional.of(group));
         when(groupMemberRepository.existsByGroupIdAndUserId(1L, userId)).thenReturn(false);
         when(groupMemberRepository.save(any(GroupMember.class))).thenReturn(new GroupMember());
-        when(groupMemberRepository.findByGroupId(1L)).thenReturn(List.of(new GroupMember(1L, 1L, userId, null)));
+        when(groupMemberRepository.findByGroupId(1L)).thenReturn(List.of(new GroupMember(1L, 1L, userId, null, false)));
         when(groupHabitRepository.findByGroupId(1L)).thenReturn(List.of());
 
         // Act
@@ -114,7 +114,7 @@ class GroupServiceTest {
         request.setTitle("Morning Run");
         request.setDescription("Run 5km every morning");
 
-        Group group = new Group(1L, "Warriors", "CODE", 1L, null, null, false);
+        Group group = new Group(1L, "Warriors", "CODE", 1L, null, null, false, null, null);
         when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
         GroupHabit saved = new GroupHabit(10L, groupId, "Morning Run", "Run 5km every morning");
         when(groupHabitRepository.save(any(GroupHabit.class))).thenReturn(saved);

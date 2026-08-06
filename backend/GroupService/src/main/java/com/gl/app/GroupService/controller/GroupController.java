@@ -106,4 +106,36 @@ public class GroupController {
     public ResponseEntity<java.util.List<GroupResponse>> getUserGroups(@RequestHeader("X-User-Id") Long userId) {
         return ResponseEntity.ok(groupService.getUserGroups(userId));
     }
+
+    /**
+     * Changes the deadline of the competition.
+     *
+     * @param id       the group ID
+     * @param request  the change deadline details
+     * @param userId   the authenticated user's ID
+     * @return 200 OK with updated group
+     */
+    @PostMapping("/{id}/deadline")
+    public ResponseEntity<GroupResponse> changeDeadline(
+            @PathVariable Long id,
+            @RequestBody ChangeDeadlineRequest request,
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(groupService.changeDeadline(id, userId, request));
+    }
+
+    /**
+     * Promotes a member to admin.
+     *
+     * @param id        the group ID
+     * @param targetId  the user ID to promote
+     * @param userId    the authenticated user's ID
+     * @return 200 OK with updated group
+     */
+    @PostMapping("/{id}/members/{targetId}/promote")
+    public ResponseEntity<GroupResponse> promoteToAdmin(
+            @PathVariable Long id,
+            @PathVariable Long targetId,
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(groupService.promoteToAdmin(id, targetId, userId));
+    }
 }

@@ -12,4 +12,8 @@ public class CreateGroupRequest {
     /** Name of the group to create. */
     @NotBlank(message = "Group name must not be blank")
     private String name;
+    
+    private String description;
+    
+    private String duration;
 }

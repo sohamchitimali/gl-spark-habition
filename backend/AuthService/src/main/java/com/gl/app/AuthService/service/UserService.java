@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import com.gl.app.AuthService.dto.ProfileDto;
+import com.gl.app.AuthService.dto.UserProfileDto;
 
 @Service
 public class UserService {
@@ -78,9 +80,29 @@ public class UserService {
         return new AuthResponseDto(newAccessToken, newRefreshToken, user.getId());
     }
 
-    public List<com.gl.app.AuthService.dto.UserProfileDto> getUsersByIds(List<Long> ids) {
+    public List<UserProfileDto> getUsersByIds(List<Long> ids) {
         return userRepository.findAllById(ids).stream()
-                .map(u -> new com.gl.app.AuthService.dto.UserProfileDto(u.getId(), u.getEmail()))
+                .map(u -> new UserProfileDto(u.getId(), u.getEmail(), u.getName(), u.getPreferredColor(), u.getLocation(), u.getGenreOfInterest(), u.getBio()))
                 .collect(Collectors.toList());
+    }
+
+    public ProfileDto getProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return new ProfileDto(user.getName(), user.getPreferredColor(), user.getLocation(), user.getGenreOfInterest(), user.getBio());
+    }
+
+    public ProfileDto updateProfile(Long userId, ProfileDto request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        user.setName(request.getName());
+        user.setPreferredColor(request.getPreferredColor());
+        user.setLocation(request.getLocation());
+        user.setGenreOfInterest(request.getGenreOfInterest());
+        user.setBio(request.getBio());
+        
+        User savedUser = userRepository.save(user);
+        return new ProfileDto(savedUser.getName(), savedUser.getPreferredColor(), savedUser.getLocation(), savedUser.getGenreOfInterest(), savedUser.getBio());
     }
 }

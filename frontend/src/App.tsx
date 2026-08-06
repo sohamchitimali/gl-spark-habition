@@ -11,6 +11,7 @@ import CreateGroupPage from './features/groups/CreateGroupPage';
 import JoinGroupPage from './features/groups/JoinGroupPage';
 import LeaderboardPage from './features/leaderboard/LeaderboardPage';
 import HeatmapPage from './features/heatmap/HeatmapPage';
+import ProfilePage from './features/profile/ProfilePage';
 
 /**
  * Root application component.
@@ -32,6 +33,7 @@ function App() {
           <Route path="/groups/join"   element={<ProtectedRoute><JoinGroupPage /></ProtectedRoute>} />
           <Route path="/groups/:groupId" element={<ProtectedRoute><GroupDashboardPage /></ProtectedRoute>} />
           <Route path="/groups/:groupId/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/heatmap" element={<ProtectedRoute><HeatmapPage /></ProtectedRoute>} />
 
           {/* Default redirect */}

@@ -12,8 +12,11 @@ export interface CompleteHabitResponse { habitId: number; completedOn: string; c
 export const getHabits = (userId: number) =>
   axiosInstance.get<Habit[]>(`/habits/users/${userId}`);
 
-export const createHabit = (title: string, description?: string) =>
-  axiosInstance.post<Habit>(`/habits`, null, { params: { title, description } });
+export const createHabit = (title: string, description: string) =>
+  axiosInstance.post<Habit>('/habits', null, { params: { title, description } });
+
+export const createGroupTrackingHabit = (groupId: number, groupHabitId: number, title: string, description: string) =>
+  axiosInstance.post<Habit>('/habits/group', null, { params: { groupId, groupHabitId, title, description } });
 
 export const completeHabit = (habitId: number) =>
   axiosInstance.post<CompleteHabitResponse>(`/habits/${habitId}/complete`);

@@ -44,4 +44,11 @@ public class Group {
     /** Whether a competition is currently active. */
     @Column(nullable = false)
     private Boolean competitionActive = false;
+    
+    /** Description of the group. */
+    @Column(columnDefinition = "TEXT")
+    private String description;
+    
+    /** Duration of the competition (e.g. 'Days', 'Weeks', 'Months', 'Indefinite'). */
+    private String duration;
 }

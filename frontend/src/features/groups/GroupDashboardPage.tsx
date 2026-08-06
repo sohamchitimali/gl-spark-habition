@@ -1,14 +1,18 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { getGroup, addHabit, deleteGroupHabit, type GroupResponse, type GroupHabit } from '../../api/groupApi';
-import { completeHabit, getTasks, createTask, toggleTask, deleteTask, type HabitTask } from '../../api/habitApi';
-import { getUserBalance, getLeaderboard, type LeaderboardEntry } from '../../api/coinApi';
+import { getGroup, addHabit, deleteGroupHabit, changeDeadline, promoteToAdmin, type GroupResponse, type GroupHabit } from '../../api/groupApi';
+import { completeHabit, getTasks, createTask, toggleTask, deleteTask, getHabits, createGroupTrackingHabit, type HabitTask } from '../../api/habitApi';
+import { getLeaderboard, resetGroupCoins, type LeaderboardEntry } from '../../api/coinApi';
+import { getUsers, type UserProfile } from '../../api/authApi';
 import Navbar from '../../components/Navbar';
+import habitionCoin from '../../assets/habition_coin.png';
+import SpinningCoin3D from '../../components/SpinningCoin3D';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface GroupHabitWithTasks extends GroupHabit {
+  trackingHabitId: number | null;
   tasks: HabitTask[];
   tasksLoaded: boolean;
   completedToday: boolean;
@@ -52,6 +56,30 @@ const GroupDashboardPage = () => {
   const [newDesc, setNewDesc] = useState('');
   const [creating, setCreating] = useState(false);
 
+  const [showCoinAnimation, setShowCoinAnimation] = useState(false);
+  const [members, setMembers] = useState<UserProfile[]>([]);
+
+  // Change deadline modal
+  const [showExtendModal, setShowExtendModal] = useState(false);
+  const [dlMode, setDlMode] = useState<'ADD' | 'REDUCE' | 'SET'>('ADD');
+  const [dlYears, setDlYears] = useState(0);
+  const [dlMonths, setDlMonths] = useState(0);
+  const [dlWeeks, setDlWeeks] = useState(0);
+  const [dlDays, setDlDays] = useState(0);
+  const [dlSetDate, setDlSetDate] = useState('');
+  const [extending, setExtending] = useState(false);
+
+  // Group Details Modal
+  const [showGroupDetailsModal, setShowGroupDetailsModal] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  // Live Timer
+  const [now, setNow] = useState(new Date().getTime());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date().getTime()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -63,48 +91,75 @@ const GroupDashboardPage = () => {
 
   // ─── Load group data ────────────────────────────────────────────────────────
 
-  const loadCoins = () => {
-    if (!userId) return;
-    getUserBalance(userId).then(r => setCoins(r.data)).catch(() => {});
-  };
-
   const loadLeaderboard = () => {
-    if (!groupId) return;
-    getLeaderboard(Number(groupId)).then(r => {
-      setLeaderboard(r.data.entries);
-      const rank = r.data.entries.findIndex(e => e.userId === userId);
-      setMyRank(rank >= 0 ? rank + 1 : null);
-    }).catch(() => {});
+    if (!groupId || !userId) return;
+    getLeaderboard(Number(groupId))
+      .then(r => {
+        setLeaderboard(r.data.entries);
+        const entry = r.data.entries.find(e => e.userId === userId);
+        if (entry) {
+          setMyRank(entry.rank);
+          setCoins(entry.totalCoins); // Use group coins instead of global coins
+        } else {
+          const maxRank = r.data.entries.length > 0 ? r.data.entries[r.data.entries.length - 1].rank : 0;
+          setMyRank(maxRank + 1);
+          setCoins(0);
+        }
+      })
+      .catch(() => { setMyRank(1); setCoins(0); });
   };
 
   useEffect(() => {
-    if (!groupId) return;
-    getGroup(Number(groupId))
-      .then(r => {
-        setGroup(r.data);
-        setHabits(r.data.habits.map(h => ({
-          ...h,
-          tasks: [],
-          tasksLoaded: false,
-          completedToday: false,
-        })));
+    if (!groupId || !userId) return;
+    Promise.all([
+      getGroup(Number(groupId)),
+      getHabits(userId)
+    ])
+      .then(([groupRes, habitsRes]) => {
+        setGroup(groupRes.data);
+        const userHabits = habitsRes.data;
+
+        setHabits(groupRes.data.habits.map(h => {
+          const matchingHabit = userHabits.find(uh => uh.groupHabitId === h.id);
+          return {
+            ...h,
+            trackingHabitId: matchingHabit ? matchingHabit.id : null,
+            tasks: matchingHabit ? matchingHabit.tasks || [] : [],
+            tasksLoaded: !!matchingHabit,
+            completedToday: matchingHabit ? matchingHabit.completedToday : false,
+          };
+        }));
+
+        // Fetch members
+        if (groupRes.data.memberIds && groupRes.data.memberIds.length > 0) {
+          getUsers(groupRes.data.memberIds).then(r => setMembers(r.data)).catch(() => { });
+        }
       })
       .catch(() => navigate('/groups'))
       .finally(() => setLoading(false));
-    loadCoins();
     loadLeaderboard();
   }, [groupId, userId]);
 
   // ─── Expand — lazy load tasks ───────────────────────────────────────────────
 
-  const handleExpand = (habitId: number) => {
+  const handleExpand = async (habitId: number) => {
     if (expandedId === habitId) { setExpandedId(null); return; }
     setExpandedId(habitId);
+
     const habit = habits.find(h => h.id === habitId);
-    if (!habit?.tasksLoaded) {
-      getTasks(habitId).then(r => {
+    if (!habit) return;
+
+    if (!habit.trackingHabitId && groupId) {
+      try {
+        const res = await createGroupTrackingHabit(Number(groupId), habitId, habit.title, habit.description || '');
+        setHabits(prev => prev.map(h => h.id === habitId ? { ...h, trackingHabitId: res.data.id, tasks: [], tasksLoaded: true } : h));
+      } catch {
+        showToast('⚠️ Failed to initialize tracking');
+      }
+    } else if (!habit.tasksLoaded && habit.trackingHabitId) {
+      getTasks(habit.trackingHabitId).then(r => {
         setHabits(prev => prev.map(h => h.id === habitId ? { ...h, tasks: r.data, tasksLoaded: true } : h));
-      }).catch(() => {});
+      }).catch(() => { });
     }
   };
 
@@ -120,7 +175,10 @@ const GroupDashboardPage = () => {
   const handleAddTask = async (habitId: number) => {
     const title = (taskInputs[habitId] ?? '').trim();
     if (!title) return;
-    const res = await createTask(habitId, title);
+    const habit = habits.find(h => h.id === habitId);
+    if (!habit?.trackingHabitId) return;
+
+    const res = await createTask(habit.trackingHabitId, title);
     setHabits(prev => prev.map(h =>
       h.id === habitId ? { ...h, tasks: [...h.tasks, res.data] } : h
     ));
@@ -139,7 +197,7 @@ const GroupDashboardPage = () => {
     setCreating(true);
     try {
       const res = await addHabit(Number(groupId), newTitle.trim(), newDesc.trim());
-      setHabits(prev => [...prev, { ...res.data, tasks: [], tasksLoaded: true, completedToday: false }]);
+      setHabits(prev => [...prev, { ...res.data, trackingHabitId: null, tasks: [], tasksLoaded: true, completedToday: false }]);
       setNewTitle('');
       setNewDesc('');
       setShowCreateModal(false);
@@ -167,15 +225,69 @@ const GroupDashboardPage = () => {
   // ─── Complete habit ─────────────────────────────────────────────────────────
 
   const handleCompleteHabit = async (habit: GroupHabitWithTasks) => {
+    if (!habit.trackingHabitId) return;
     try {
-      const res = await completeHabit(habit.id);
+      const res = await completeHabit(habit.trackingHabitId);
       setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, completedToday: true } : h));
-      loadCoins();
       loadLeaderboard();
-      showToast(`+${res.data.coinsEarned} 🪙 earned for the group!`);
+
+      setShowCoinAnimation(true);
+      setTimeout(() => setShowCoinAnimation(false), 2500);
+
+      showToast(`+${res.data.coinsEarned} coins earned for the group!`);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       if (msg) showToast(`⚠️ ${msg}`);
+    }
+  };
+
+  // ─── Change Deadline ────────────────────────────────────────────────────────
+
+  const handleChangeDeadline = async () => {
+    if (!groupId) return;
+    setExtending(true);
+    try {
+      let requestPayload: any = { mode: dlMode };
+      if (dlMode === 'SET') {
+        if (!dlSetDate) {
+          showToast('⚠️ Please select a date');
+          setExtending(false);
+          return;
+        }
+        requestPayload.newDate = new Date(dlSetDate).toISOString();
+      } else {
+        if (dlYears === 0 && dlMonths === 0 && dlWeeks === 0 && dlDays === 0) {
+          showToast('⚠️ Please enter at least one duration value');
+          setExtending(false);
+          return;
+        }
+        requestPayload = { ...requestPayload, years: dlYears, months: dlMonths, weeks: dlWeeks, days: dlDays };
+      }
+
+      const res = await changeDeadline(Number(groupId), requestPayload);
+      setGroup(res.data);
+      setShowExtendModal(false);
+      showToast('Deadline updated successfully!');
+    } catch (err) {
+      showToast('⚠️ Failed to update deadline');
+    } finally {
+      setExtending(false);
+    }
+  };
+
+  const handleResetCoins = async () => {
+    if (!groupId || !window.confirm('Are you sure you want to reset all coins for this group? This cannot be undone.')) return;
+    setResetting(true);
+    try {
+      await resetGroupCoins(Number(groupId));
+      // Removed loadCoins(); since it's global and not strictly needed here for reset
+      loadLeaderboard();
+      setShowGroupDetailsModal(false);
+      showToast('Group coins have been reset!');
+    } catch (err) {
+      showToast('⚠️ Failed to reset coins');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -184,6 +296,29 @@ const GroupDashboardPage = () => {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const completedCount = habits.filter(h => h.completedToday).length;
   const isOwner = group?.ownerId === userId;
+  const isAdmin = isOwner || (group?.adminIds && group.adminIds.includes(userId!));
+
+  let timeLeftString = 'No Deadline';
+  if (group?.competitionEndDate) {
+    const end = new Date(group.competitionEndDate).getTime();
+    const diff = end - now;
+    if (diff <= 0) {
+      timeLeftString = 'Competition Ended';
+    } else {
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+      const parts = [];
+      if (days > 0) parts.push(`${days}d`);
+      if (hours > 0 || days > 0) parts.push(`${hours}h`);
+      parts.push(`${mins}m`);
+      parts.push(`${secs}s`);
+
+      timeLeftString = parts.join(' ');
+    }
+  }
 
   if (loading) {
     return (
@@ -224,28 +359,59 @@ const GroupDashboardPage = () => {
             style={{ color: '#7F77DD' }}>
             ← Back to Groups
           </Link>
-          <div className="flex items-center gap-4 mt-2">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-2xl"
-              style={{ background: 'linear-gradient(135deg, #534AB7, #D85A30)' }}>
-              {group.name[0].toUpperCase()}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2">
+            <div
+              className="flex items-center gap-4 cursor-pointer group bg-[#2C2C2A] p-4 rounded-2xl border border-[#363634] hover:border-[#5F5E5A] transition-colors flex-1"
+              onClick={() => setShowGroupDetailsModal(true)}
+              title="Click to view Group Details and Members"
+            >
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-2xl transition-transform group-hover:scale-105"
+                style={{ background: 'linear-gradient(135deg, #534AB7, #D85A30)' }}>
+                {group.name[0].toUpperCase()}
+              </div>
+              <div className="group-hover:opacity-80 transition-opacity flex-1">
+                <h1 className="text-3xl font-bold text-white leading-tight flex items-center gap-2">
+                  {group.name}
+                  <svg className="w-5 h-5 text-[#7F77DD]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </h1>
+                {group.description && <p className="text-sm mt-1" style={{ color: '#B4B2A9' }}>{group.description}</p>}
+                <p className="text-sm mt-1" style={{ color: '#7F77DD' }}>{today}</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white">{group.name}</h1>
-              <p className="text-sm mt-0.5" style={{ color: '#B4B2A9' }}>
-                {group.memberIds?.length ?? 1} member{(group.memberIds?.length ?? 1) !== 1 ? 's' : ''} · {today}
-              </p>
+
+            {/* Time Left Box */}
+            <div className="flex items-center gap-3 bg-[#2C2C2A] rounded-2xl p-4 border border-[#363634] md:self-stretch">
+              <div className="flex flex-col justify-center">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[#B4B2A9] mb-1">Time Left</span>
+                <span className="text-lg font-bold text-white tabular-nums whitespace-nowrap min-w-[150px] inline-block pr-4">{timeLeftString}</span>
+              </div>
             </div>
           </div>
+
         </div>
 
+        {/* Show spinning coin on complete */}
+        {showCoinAnimation && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none bg-black/40 backdrop-blur-sm animate-fade-in">
+            <div className="animate-coin-pop" style={{ transform: 'scale(1.5)' }}>
+              <SpinningCoin3D />
+            </div>
+          </div>
+        )}
+
+        {/* Create Modal */}
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           {/* Coins */}
           <div className="rounded-2xl p-5 animate-fade-up delay-100"
             style={{ background: 'linear-gradient(135deg, #712B13, #993C1D)', border: '1px solid rgba(216,90,48,0.4)' }}>
             <p className="text-sm font-medium mb-1" style={{ color: '#F0997B' }}>My Coins</p>
-            <p className="text-3xl font-bold text-white">{coins !== null ? coins : '—'} <span className="text-xl">🪙</span></p>
-            <p className="text-xs mt-1" style={{ color: '#F0997B' }}>earned total</p>
+            <p className="text-3xl font-bold text-white flex items-center gap-2">
+              {coins !== null ? coins : '—'} <img src={habitionCoin} alt="coin" className="w-8 h-8" />
+            </p>
+            <p className="text-xs mt-1" style={{ color: '#F0997B' }}>earned in group</p>
           </div>
 
           {/* Rank */}
@@ -273,7 +439,7 @@ const GroupDashboardPage = () => {
         <div className="mb-8 animate-fade-up delay-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-white">Group Habits</h2>
-            {isOwner && (
+            {isAdmin && (
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="px-3 py-1.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80 flex items-center gap-2"
@@ -362,9 +528,9 @@ const GroupDashboardPage = () => {
                           </button>
                         )}
                         {habit.completedToday && (
-                          <span className="text-xs font-medium px-2 py-1 rounded-full"
+                          <span className="flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full"
                             style={{ background: 'rgba(216,90,48,0.2)', color: '#F0997B' }}>
-                            +10 🪙
+                            +1 <img src={habitionCoin} alt="coin" className="w-3.5 h-3.5" />
                           </span>
                         )}
                         <svg
@@ -499,7 +665,7 @@ const GroupDashboardPage = () => {
             <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #363634' }}>
               {leaderboard.slice(0, 3).map((entry, i) => {
                 const isMe = entry.userId === userId;
-                const medal = ['🥇', '🥈', '🥉'][i] ?? `#${i + 1}`;
+                const medal = ['🥇', '🥈', '🥉'][entry.rank - 1] ?? `#${entry.rank}`;
                 return (
                   <div key={entry.userId}
                     className="flex items-center justify-between px-5 py-3.5"
@@ -513,8 +679,8 @@ const GroupDashboardPage = () => {
                         User {entry.userId} {isMe && <span style={{ color: '#7F77DD' }}>(you)</span>}
                       </span>
                     </div>
-                    <span className="text-sm font-bold" style={{ color: '#F0997B' }}>
-                      {entry.totalCoins} 🪙
+                    <span className="text-sm font-bold flex items-center gap-1" style={{ color: '#F0997B' }}>
+                      {entry.totalCoins} <img src={habitionCoin} alt="coin" className="w-5 h-5" />
                     </span>
                   </div>
                 );
@@ -573,6 +739,179 @@ const GroupDashboardPage = () => {
                 {creating ? 'Creating...' : 'Create Habit'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Deadline Modal */}
+      {showExtendModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm rounded-3xl p-6 shadow-2xl"
+            style={{ background: '#2C2C2A', border: '1px solid #363634' }}>
+            <h2 className="text-xl font-bold text-white mb-4">Change Deadline</h2>
+            <p className="text-sm text-[#B4B2A9] mb-4">Update the competition deadline.</p>
+
+            <div className="flex rounded-xl p-1 mb-4" style={{ background: '#1A1A18' }}>
+              {(['ADD', 'REDUCE', 'SET'] as const).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setDlMode(mode)}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${dlMode === mode ? 'text-white' : 'text-[#5F5E5A] hover:text-[#B4B2A9]'}`}
+                  style={{ background: dlMode === mode ? '#363634' : 'transparent' }}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+
+            {dlMode === 'SET' ? (
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Select Date</label>
+                <input
+                  type="datetime-local"
+                  value={dlSetDate}
+                  onChange={e => setDlSetDate(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl text-white outline-none"
+                  style={{ background: '#1A1A18', border: '1px solid #424240' }}
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Years</label>
+                  <input type="number" min="0" value={dlYears} onChange={e => setDlYears(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl text-white outline-none" style={{ background: '#1A1A18', border: '1px solid #424240' }} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Months</label>
+                  <input type="number" min="0" value={dlMonths} onChange={e => setDlMonths(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl text-white outline-none" style={{ background: '#1A1A18', border: '1px solid #424240' }} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Weeks</label>
+                  <input type="number" min="0" value={dlWeeks} onChange={e => setDlWeeks(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl text-white outline-none" style={{ background: '#1A1A18', border: '1px solid #424240' }} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Days</label>
+                  <input type="number" min="0" value={dlDays} onChange={e => setDlDays(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl text-white outline-none" style={{ background: '#1A1A18', border: '1px solid #424240' }} />
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowExtendModal(false)}
+                className="flex-1 py-3 rounded-xl font-semibold transition-all hover:bg-white/5 text-white"
+                style={{ border: '1px solid #363634' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleChangeDeadline}
+                disabled={extending}
+                className="flex-1 py-3 rounded-xl font-semibold transition-all disabled:opacity-50"
+                style={{ background: '#534AB7', color: '#fff' }}
+              >
+                {extending ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Group Details Modal */}
+      {showGroupDetailsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowGroupDetailsModal(false)}>
+          <div className="w-full max-w-md rounded-3xl p-6 shadow-2xl flex flex-col max-h-[80vh]"
+            style={{ background: '#2C2C2A', border: '1px solid #363634' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-white mb-1">Group Details</h2>
+                <p className="text-sm text-[#B4B2A9]">Invite Code: <span className="font-mono text-white bg-[#1A1A18] px-2 py-1 rounded select-all">{group.inviteCode}</span></p>
+              </div>
+              <button onClick={() => setShowGroupDetailsModal(false)} className="text-[#5F5E5A] hover:text-white">✕</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto pr-2 mb-6 scrollbar-hide space-y-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-[#B4B2A9]">Members ({members.length})</h3>
+              <div className="space-y-3">
+                {members.map(member => {
+                  const isMemberOwner = member.id === group.ownerId;
+                  const isMemberAdmin = isMemberOwner || (group.adminIds && group.adminIds.includes(member.id));
+
+                  return (
+                    <div key={member.id} className="flex items-center gap-3 p-3 rounded-xl bg-[#1A1A18] border border-[#363634]">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-inner"
+                        style={{ background: member.preferredColor || '#534AB7' }}>
+                        {(member.name ? member.name[0] : 'U').toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-[#F1EFE8] truncate flex items-center gap-2">
+                          {member.name || `User ${member.id}`}
+                          {member.id === userId && <span className="text-[#7F77DD] text-xs">(You)</span>}
+                          {isMemberOwner ? (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#D85A30]/20 text-[#D85A30]">Owner</span>
+                          ) : isMemberAdmin ? (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#534AB7]/20 text-[#7F77DD]">Admin</span>
+                          ) : null}
+                        </p>
+                        {member.bio && <p className="text-xs text-[#5F5E5A] truncate">{member.bio}</p>}
+                      </div>
+
+                      {isAdmin && !isMemberAdmin && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await promoteToAdmin(Number(groupId), member.id);
+                              setGroup(res.data);
+                              showToast(`${member.name || 'User'} is now an admin`);
+                            } catch (e) {
+                              showToast('⚠️ Failed to promote user');
+                            }
+                          }}
+                          className="px-2 py-1 rounded-lg text-xs font-semibold bg-[#363634] text-white hover:bg-[#534AB7] transition-colors"
+                        >
+                          Make Admin
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {isAdmin && (
+              <div className="pt-4 border-t border-[#363634]">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-[#D85A30] mb-3">Admin Controls</h3>
+
+                <div className="flex gap-3 mb-4">
+                  <button
+                    onClick={() => setShowExtendModal(true)}
+                    className="flex-1 py-3 rounded-xl font-semibold transition-all hover:opacity-80"
+                    style={{ background: '#534AB7', color: '#fff' }}
+                  >
+                    Change Deadline
+                  </button>
+                </div>
+
+                <div className="p-4 rounded-xl border border-[rgba(216,90,48,0.3)] bg-[rgba(216,90,48,0.1)]">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-[#D85A30] mb-2">Danger Zone</p>
+                  <button
+                    onClick={handleResetCoins}
+                    disabled={resetting}
+                    className="w-full py-2.5 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+                    style={{ background: 'rgba(216,90,48,0.2)', color: '#D85A30' }}
+                  >
+                    {resetting ? 'Resetting...' : 'Reset All Group Coins'}
+                  </button>
+                  <p className="text-[10px] text-[#5F5E5A] mt-2 text-center leading-tight">This will permanently delete all coins earned by members in this group and clear the leaderboard.</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

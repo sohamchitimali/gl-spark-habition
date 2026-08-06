@@ -4,13 +4,18 @@ import { getLeaderboard } from '../../api/coinApi';
 import type { LeaderboardEntry, LeaderboardResponse } from '../../api/coinApi';
 import Navbar from '../../components/Navbar';
 import { useAuth } from '../../auth/AuthContext';
+import { getGroup, type GroupResponse } from '../../api/groupApi';
+import { getUsers, type UserProfile } from '../../api/authApi';
+import habitionCoin from '../../assets/habition_coin.png';
 
 const AVATAR_COLORS = ['#534AB7', '#D85A30', '#3C3489', '#993C1D', '#7F77DD', '#F0997B'];
 const BAR_COLORS = ['#7F77DD', '#F0997B', '#D85A30', '#AFA9EC', '#FAECE7', '#534AB7'];
 
-const getInitials = (userId: number) => {
-  const names = ['JS', 'RK', 'TM', 'PN', 'SL', 'YO', 'AB', 'CD'];
-  return names[userId % names.length];
+const getDisplayName = (email: string) => email.split('@')[0];
+
+const getInitials = (email: string) => {
+  const name = getDisplayName(email);
+  return name.substring(0, 2).toUpperCase();
 };
 
 const LeaderboardPage = () => {
@@ -18,23 +23,47 @@ const LeaderboardPage = () => {
   const { userId } = useAuth();
   const [data, setData] = useState<LeaderboardResponse | null>(null);
 
-  const mockEntries: LeaderboardEntry[] = [
-    { rank: 1, userId: 2, totalCoins: 284 },
-    { rank: 2, userId: 1, totalCoins: 210 },
-    { rank: 3, userId: 3, totalCoins: 176 },
-    { rank: 4, userId: 4, totalCoins: 150 },
-    { rank: 5, userId: 5, totalCoins: 132 },
-    { rank: 6, userId: userId ?? 6, totalCoins: 98 },
-  ];
+  const [group, setGroup] = useState<GroupResponse | null>(null);
+  const [users, setUsers] = useState<Record<number, UserProfile>>({});
+
+  const mockEntries: LeaderboardEntry[] = [];
 
   useEffect(() => {
     if (!groupId) return;
-    getLeaderboard(Number(groupId))
-      .then(r => setData(r.data))
-      .catch(() => setData({ groupId: Number(groupId), entries: mockEntries, winnerId: null }));
+
+    Promise.all([
+      getGroup(Number(groupId)),
+      getLeaderboard(Number(groupId)).catch(() => ({ data: { groupId: Number(groupId), entries: [], winnerId: null } }))
+    ]).then(([groupRes, boardRes]) => {
+      setGroup(groupRes.data);
+      setData(boardRes.data as LeaderboardResponse);
+      
+      const memberIds = groupRes.data.memberIds || [];
+      if (memberIds.length > 0) {
+        getUsers(memberIds)
+          .then(ur => {
+            const userMap: Record<number, UserProfile> = {};
+            ur.data.forEach(u => userMap[u.id] = u);
+            setUsers(userMap);
+          })
+          .catch(() => {});
+      }
+    }).catch(() => {});
   }, [groupId]);
 
-  const entries = data?.entries ?? mockEntries;
+  let entries = data?.entries ?? [];
+  if (group && group.memberIds) {
+    const existingIds = new Set(entries.map(e => e.userId));
+    const missingIds = group.memberIds.filter(id => !existingIds.has(id));
+    const lastRank = entries.length > 0 ? entries[entries.length - 1].rank : 0;
+    
+    const missingEntries: LeaderboardEntry[] = missingIds.map(id => ({
+      userId: id,
+      totalCoins: 0,
+      rank: lastRank + 1
+    }));
+    entries = [...entries, ...missingEntries];
+  }
   const podium = entries.slice(0, 3);
   const rest = entries.slice(3);
   const maxCoins = podium[0]?.totalCoins ?? 1;
@@ -51,7 +80,7 @@ const LeaderboardPage = () => {
           <Link to="/groups" className="p-2 rounded-xl transition-all hover:opacity-70"
             style={{ background: '#2C2C2A', color: '#B4B2A9', textDecoration: 'none' }}>←</Link>
           <div>
-            <p className="text-xs font-medium" style={{ color: '#B4B2A9' }}>Competition</p>
+            <p className="text-xs font-medium" style={{ color: '#B4B2A9' }}>{group?.name ?? 'Competition'}</p>
             <h1 className="text-xl font-bold text-white">Group Leaderboard</h1>
           </div>
           <div className="ml-auto px-3 py-1.5 rounded-full text-xs font-semibold"
@@ -70,7 +99,8 @@ const LeaderboardPage = () => {
               {podiumOrder.map((entry) => {
                 const isFirst = entry.rank === 1;
                 const barH = isFirst ? 140 : entry.rank === 2 ? 100 : 80;
-                const initials = getInitials(entry.userId);
+                const email = users[entry.userId]?.email ?? `user${entry.userId}@example.com`;
+                const initials = getInitials(email);
                 const avatarColor = isFirst ? '#D85A30' : entry.rank === 2 ? '#B4B2A9' : '#AFA9EC';
 
                 return (
@@ -92,8 +122,10 @@ const LeaderboardPage = () => {
                     </div>
                     {/* Label */}
                     <div className="text-center">
-                      <p className="text-xs font-medium text-white">{initials}</p>
-                      <p className="text-xs" style={{ color: '#B4B2A9' }}>{entry.totalCoins} 🪙</p>
+                      <p className="text-xs font-medium text-white truncate max-w-[60px]">{getDisplayName(email)}</p>
+                      <p className="text-xs flex items-center gap-1" style={{ color: '#B4B2A9' }}>
+                        {entry.totalCoins} <img src={habitionCoin} alt="coins" className="w-4 h-4" />
+                      </p>
                     </div>
                   </div>
                 );
@@ -105,7 +137,9 @@ const LeaderboardPage = () => {
           <div className="divide-y" style={{ borderColor: '#363634' }}>
             {rest.map((entry, i) => {
               const isMe = entry.userId === userId;
-              const initials = getInitials(entry.userId);
+              const email = users[entry.userId]?.email ?? `user${entry.userId}@example.com`;
+              const initials = getInitials(email);
+              const displayName = isMe ? 'You' : getDisplayName(email);
               const barPct = Math.round((entry.totalCoins / maxCoins) * 100);
               const barColor = BAR_COLORS[(i + 3) % BAR_COLORS.length];
 
@@ -122,7 +156,7 @@ const LeaderboardPage = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">
-                      {isMe ? 'You' : `User ${entry.userId}`}
+                      {displayName}
                     </p>
                     <div className="mt-1 h-1.5 rounded-full" style={{ background: '#363634' }}>
                       <div className="h-full rounded-full transition-all"
@@ -130,7 +164,7 @@ const LeaderboardPage = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#F1EFE8' }}>
-                    {entry.totalCoins} <span className="text-base">🪙</span>
+                    {entry.totalCoins} <img src={habitionCoin} alt="coins" className="w-5 h-5 inline-block" />
                   </div>
                 </div>
               );

@@ -68,4 +68,16 @@ public class CoinController {
     public ResponseEntity<Integer> getUserBalance(@PathVariable Long userId) {
         return ResponseEntity.ok(coinService.getTotalCoins(userId));
     }
+
+    /**
+     * Resets the leaderboard for a specific group.
+     *
+     * @param groupId the group ID
+     * @return 204 No Content
+     */
+    @DeleteMapping("/coins/groups/{groupId}/reset")
+    public ResponseEntity<Void> resetGroupCoins(@PathVariable Long groupId) {
+        coinService.resetGroupCoins(groupId);
+        return ResponseEntity.noContent().build();
+    }
 }

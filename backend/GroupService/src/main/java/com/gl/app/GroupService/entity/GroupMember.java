@@ -32,4 +32,8 @@ public class GroupMember {
 
     /** Timestamp when the user joined the group. */
     private LocalDateTime joinedAt;
+
+    /** Whether this member has admin privileges. */
+    @Column(name = "is_admin", columnDefinition = "boolean default false")
+    private Boolean isAdmin = false;
 }

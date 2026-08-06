@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
+import habitionCoin from '../../assets/habition_coin.png';
 
 const LoginPage = () => {
   const { login } = useAuth();
@@ -42,9 +43,10 @@ const LoginPage = () => {
           </p>
           <div className="mt-10 flex gap-4">
             {['🔥 Streaks', '🪙 Coins', '🏆 Leaderboards'].map((badge) => (
-              <span key={badge} className="px-4 py-2 rounded-full text-sm font-medium"
+              <span key={badge} className="px-4 py-2 rounded-full text-sm font-medium flex items-center gap-1"
                 style={{ background: 'rgba(83,74,183,0.3)', color: '#AFA9EC', border: '1px solid rgba(127,119,221,0.3)' }}>
-                {badge}
+                {badge === '🪙 Coins' ? <img src={habitionCoin} alt="coins" className="w-4 h-4" /> : null}
+                {badge === '🪙 Coins' ? 'Coins' : badge}
               </span>
             ))}
           </div>

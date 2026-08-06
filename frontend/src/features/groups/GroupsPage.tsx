@@ -1,14 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 
-interface Group { id: number; name: string; inviteCode: string; memberIds: number[]; }
+import { getMyGroups, type GroupResponse } from '../../api/groupApi';
 
 const GroupsPage = () => {
-  const [groups] = useState<Group[]>(() => {
-    const stored = localStorage.getItem('myGroups');
-    return stored ? JSON.parse(stored) : [];
-  });
+  const [groups, setGroups] = useState<GroupResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getMyGroups()
+      .then(r => setGroups(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#1a1a18' }}>
+        <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: '#534AB7', borderTopColor: 'transparent' }} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen" style={{ background: '#1a1a18' }}>
