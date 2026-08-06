@@ -1,0 +1,30 @@
+<div style="display:flex;justify-content:center;padding:2rem 0;">
+<div id="grid" style="display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);gap:8px;"></div>
+</div>
+<script>
+const grid = document.getElementById('grid');
+const tiles = [];
+for (let i = 0; i < 9; i++) {
+  const tile = document.createElement('div');
+  tile.style.width = '64px';
+  tile.style.height = '64px';
+  tile.style.borderRadius = '10px';
+  tile.style.background = '#FFFFFF';
+  tile.style.border = '1px solid #D9D9D6';
+  tile.style.transition = 'background 0.25s ease';
+  grid.appendChild(tile);
+  tiles.push(tile);
+}
+const activeColor = '#B4B2A9';
+const idleColor = '#FFFFFF';
+const stepDuration = 160;
+let current = 0;
+function step() {
+  tiles.forEach((tile, i) => {
+    tile.style.background = i === current ? activeColor : idleColor;
+  });
+  current = (current + 1) % tiles.length;
+}
+step();
+setInterval(step, stepDuration);
+</script>

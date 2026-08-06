@@ -1,0 +1,140 @@
+@import "tailwindcss";
+
+@theme {
+  /* Primary — purple */
+  --color-primary-50: #EEEDFE;
+  --color-primary-100: #AFA9EC;
+  --color-primary-300: #7F77DD;
+  --color-primary-500: #534AB7;
+  --color-primary-700: #3C3489;
+  --color-primary-900: #26215C;
+
+  /* Accent — orange */
+  --color-accent-50: #FAECE7;
+  --color-accent-200: #F0997B;
+  --color-accent-400: #D85A30;
+  --color-accent-600: #993C1D;
+  --color-accent-800: #712B13;
+
+  /* Neutrals / Dark mode surfaces */
+  --color-surface-0: #1a1a18;
+  --color-surface-100: #2C2C2A;
+  --color-surface-200: #363634;
+  --color-surface-300: #424240;
+  --color-surface-400: #5F5E5A;
+  --color-surface-500: #B4B2A9;
+  --color-surface-600: #F1EFE8;
+  --color-surface-700: #FFFFFF;
+
+  /* Font */
+  --font-sans: 'Inter', sans-serif;
+
+  /* Radius */
+  --radius-card: 1.25rem;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: var(--color-surface-0);
+    color: var(--color-surface-600);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-surface-100);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-400);
+    border-radius: 2px;
+  }
+}
+
+/* Custom animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(83, 74, 183, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgba(83, 74, 183, 0);
+  }
+}
+
+@keyframes streak-flame {
+
+  0%,
+  100% {
+    transform: scale(1) rotate(-3deg);
+  }
+
+  50% {
+    transform: scale(1.15) rotate(3deg);
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeInUp 0.4s ease both;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+.animate-flame {
+  animation: streak-flame 1.2s ease-in-out infinite;
+}
+
+.animate-slide-in {
+  animation: slide-in 0.35s ease both;
+}
+
+/* Delay utilities */
+.delay-100 {
+  animation-delay: 100ms;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+.delay-300 {
+  animation-delay: 300ms;
+}

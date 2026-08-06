@@ -1,0 +1,32 @@
+package com.gl.app.AuthService.controller;
+
+import com.gl.app.AuthService.dto.AuthRequestDto;
+import com.gl.app.AuthService.dto.AuthResponseDto;
+import com.gl.app.AuthService.dto.RefreshRequestDto;
+import com.gl.app.AuthService.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/auth")
+public class AuthController {
+
+    @Autowired
+    private UserService userService;
+
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponseDto> register(@RequestBody AuthRequestDto request) {
+        return ResponseEntity.ok(userService.register(request));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponseDto> login(@RequestBody AuthRequestDto request) {
+        return ResponseEntity.ok(userService.login(request));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponseDto> refresh(@RequestBody RefreshRequestDto request) {
+        return ResponseEntity.ok(userService.refresh(request.getRefreshToken()));
+    }
+}
