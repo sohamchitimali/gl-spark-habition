@@ -5,9 +5,11 @@ import com.gl.app.HabitService.dto.*;
 import com.gl.app.HabitService.entity.Habit;
 import com.gl.app.HabitService.entity.HabitCompletion;
 import com.gl.app.HabitService.entity.HabitTask;
+import com.gl.app.HabitService.entity.HeatmapRecord;
 import com.gl.app.HabitService.repository.HabitCompletionRepository;
 import com.gl.app.HabitService.repository.HabitRepository;
 import com.gl.app.HabitService.repository.HabitTaskRepository;
+import com.gl.app.HabitService.repository.HeatmapRecordRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -45,6 +47,9 @@ public class HabitService {
 
     @Autowired
     private CoinServiceClient coinServiceClient;
+
+    @Autowired
+    private HeatmapRecordRepository heatmapRecordRepository;
 
     // ─── Habit CRUD ───────────────────────────────────────────────────────────
 
@@ -144,7 +149,56 @@ public class HabitService {
         HabitTask task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
         task.setCompleted(!task.isCompleted());
-        return toTaskResponse(taskRepository.save(task));
+        HabitTask savedTask = taskRepository.save(task);
+
+        // Update heatmap record based on task completion
+        Habit habit = habitRepository.findById(task.getHabitId()).orElse(null);
+        if (habit != null) {
+            updateHeatmapRecord(habit);
+        }
+
+        return toTaskResponse(savedTask);
+    }
+
+    private void updateHeatmapRecord(Habit habit) {
+        LocalDate today = LocalDate.now();
+        int totalTasks = 0;
+        int completedTasks = 0;
+
+        if (habit.getGroupId() == null) {
+            // Personal heatmap calculation
+            List<Habit> personalHabits = habitRepository.findByUserId(habit.getUserId()).stream()
+                    .filter(h -> h.getGroupId() == null).collect(Collectors.toList());
+            for (Habit h : personalHabits) {
+                List<HabitTask> tasks = taskRepository.findByHabitId(h.getId());
+                totalTasks += tasks.size();
+                completedTasks += tasks.stream().filter(HabitTask::isCompleted).count();
+            }
+            int percentage = totalTasks == 0 ? 0 : Math.round(((float) completedTasks / totalTasks) * 100);
+            
+            HeatmapRecord record = heatmapRecordRepository.findByUserIdAndGroupIdIsNullAndRecordDate(habit.getUserId(), today)
+                    .orElse(new HeatmapRecord(null, habit.getUserId(), null, today, 0, 0, 0));
+            record.setTotalTasks(totalTasks);
+            record.setCompletedTasks(completedTasks);
+            record.setCompletionPercentage(percentage);
+            heatmapRecordRepository.save(record);
+        } else {
+            // Group heatmap calculation
+            List<Habit> groupHabits = habitRepository.findByGroupId(habit.getGroupId());
+            for (Habit h : groupHabits) {
+                List<HabitTask> tasks = taskRepository.findByHabitId(h.getId());
+                totalTasks += tasks.size();
+                completedTasks += tasks.stream().filter(HabitTask::isCompleted).count();
+            }
+            int percentage = totalTasks == 0 ? 0 : Math.round(((float) completedTasks / totalTasks) * 100);
+            
+            HeatmapRecord record = heatmapRecordRepository.findByGroupIdAndUserIdIsNullAndRecordDate(habit.getGroupId(), today)
+                    .orElse(new HeatmapRecord(null, null, habit.getGroupId(), today, 0, 0, 0));
+            record.setTotalTasks(totalTasks);
+            record.setCompletedTasks(completedTasks);
+            record.setCompletionPercentage(percentage);
+            heatmapRecordRepository.save(record);
+        }
     }
 
     /**
@@ -261,11 +315,19 @@ public class HabitService {
      * @return a {@link HeatmapResponse} with daily completion counts
      */
     public HeatmapResponse getHeatmap(Long userId) {
-        List<Object[]> raw = completionRepository.countCompletionsByDateForUser(userId);
-        List<HeatmapDay> days = raw.stream()
-                .map(row -> new HeatmapDay((LocalDate) row[0], ((Number) row[1]).intValue()))
+        List<HeatmapRecord> records = heatmapRecordRepository.findByUserIdAndGroupIdIsNullOrderByRecordDateDesc(userId);
+        List<HeatmapDay> days = records.stream()
+                .map(r -> new HeatmapDay(r.getRecordDate(), r.getCompletionPercentage()))
                 .collect(Collectors.toList());
         return new HeatmapResponse(userId, days);
+    }
+
+    public HeatmapResponse getGroupHeatmap(Long groupId) {
+        List<HeatmapRecord> records = heatmapRecordRepository.findByGroupIdAndUserIdIsNullOrderByRecordDateDesc(groupId);
+        List<HeatmapDay> days = records.stream()
+                .map(r -> new HeatmapDay(r.getRecordDate(), r.getCompletionPercentage()))
+                .collect(Collectors.toList());
+        return new HeatmapResponse(groupId, days); // Using HeatmapResponse for group as well
     }
 
     // ─── Private helpers ──────────────────────────────────────────────────────

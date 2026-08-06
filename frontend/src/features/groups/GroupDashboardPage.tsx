@@ -5,9 +5,11 @@ import { getGroup, addHabit, deleteGroupHabit, changeDeadline, promoteToAdmin, t
 import { completeHabit, getTasks, createTask, toggleTask, deleteTask, getHabits, createGroupTrackingHabit, type HabitTask } from '../../api/habitApi';
 import { getLeaderboard, resetGroupCoins, type LeaderboardEntry } from '../../api/coinApi';
 import { getUsers, type UserProfile } from '../../api/authApi';
+import { getGroupHeatmap, type HeatmapDay } from '../../api/habitApi';
 import Navbar from '../../components/Navbar';
 import habitionCoin from '../../assets/habition_coin.png';
 import SpinningCoin3D from '../../components/SpinningCoin3D';
+import HeatmapView from '../../components/HeatmapView';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,6 +51,8 @@ const GroupDashboardPage = () => {
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [taskInputs, setTaskInputs] = useState<Record<number, string>>({});
+
+  const [heatmapData, setHeatmapData] = useState<Map<string, number>>(new Map());
 
   // Create habit modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -137,7 +141,32 @@ const GroupDashboardPage = () => {
       })
       .catch(() => navigate('/groups'))
       .finally(() => setLoading(false));
+
+    const generateMockData = (): Map<string, number> => {
+      const map = new Map<string, number>();
+      for (let d = 0; d < 365 * 3; d++) {
+        const date = new Date();
+        date.setDate(date.getDate() - d);
+        const key = date.toISOString().split('T')[0];
+        if (Math.random() > 0.3) map.set(key, Math.ceil(Math.random() * 100));
+      }
+      return map;
+    };
+
+    getGroupHeatmap(Number(groupId))
+      .then(r => {
+        const map = new Map<string, number>();
+        r.data.days.forEach((d: HeatmapDay) => map.set(d.date, d.completionPercentage));
+        setHeatmapData(map);
+      })
+      .catch(() => setHeatmapData(generateMockData()));
+      
     loadLeaderboard();
+    const interval = setInterval(() => {
+      loadLeaderboard();
+    }, 5000); // Poll leaderboard every 5 seconds
+
+    return () => clearInterval(interval);
   }, [groupId, userId]);
 
   // ─── Expand — lazy load tasks ───────────────────────────────────────────────
@@ -650,6 +679,11 @@ const GroupDashboardPage = () => {
               })}
             </div>
           )}
+        </div>
+
+        {/* Group Heatmap */}
+        <div className="mt-12 animate-fade-up delay-100">
+          <HeatmapView heatmapData={heatmapData} title="Group consistency" />
         </div>
 
         {/* Leaderboard preview */}

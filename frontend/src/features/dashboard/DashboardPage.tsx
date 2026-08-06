@@ -85,6 +85,12 @@ const DashboardPage = () => {
     getHabits(userId).then(r => {
       setHabits(r.data.map(h => ({ ...h, tasksLoaded: true })));
     }).catch(() => {}).finally(() => setHabitsLoading(false));
+
+    const interval = setInterval(() => {
+      loadStats();
+    }, 5000); // Poll user stats every 5 seconds
+
+    return () => clearInterval(interval);
   }, [userId]);
 
   // ─── Expand a habit — lazy-load its tasks ──────────────────────────────────

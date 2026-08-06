@@ -169,6 +169,17 @@ public class HabitController {
     }
 
     /**
+     * Retrieves heatmap data for a specific group.
+     *
+     * @param groupId the group whose heatmap data is requested
+     * @return 200 OK with list of daily completion percentages
+     */
+    @GetMapping("/groups/{groupId}/heatmap")
+    public ResponseEntity<HeatmapResponse> getGroupHeatmap(@PathVariable Long groupId) {
+        return ResponseEntity.ok(habitService.getGroupHeatmap(groupId));
+    }
+
+    /**
      * Retrieves current and personal best streak for a user.
      *
      * @param userId the user whose streak is requested

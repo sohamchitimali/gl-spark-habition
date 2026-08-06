@@ -2,8 +2,8 @@ import axiosInstance from './axiosConfig';
 
 export interface HabitTask { id: number; habitId: number; title: string; completed: boolean; }
 export interface Habit { id: number; title: string; description: string | null; userId: number; groupId: number | null; groupHabitId: number | null; completedToday: boolean; tasks: HabitTask[]; }
-export interface HeatmapDay { date: string; completionCount: number; }
-export interface HeatmapResponse { userId: number; days: HeatmapDay[]; }
+export interface HeatmapDay { date: string; completionPercentage: number; }
+export interface HeatmapResponse { userId?: number; groupId?: number; days: HeatmapDay[]; }
 export interface StreakResponse { userId: number; currentStreak: number; personalBest: number; }
 export interface CompleteHabitResponse { habitId: number; completedOn: string; currentStreak: number; coinsEarned: number; }
 
@@ -42,6 +42,9 @@ export const deleteTask = (taskId: number) =>
 
 export const getHeatmap = (userId: number) =>
   axiosInstance.get<HeatmapResponse>(`/users/${userId}/heatmap`);
+
+export const getGroupHeatmap = (groupId: number) =>
+  axiosInstance.get<HeatmapResponse>(`/groups/${groupId}/heatmap`);
 
 export const getStreak = (userId: number) =>
   axiosInstance.get<StreakResponse>(`/users/${userId}/streak`);
