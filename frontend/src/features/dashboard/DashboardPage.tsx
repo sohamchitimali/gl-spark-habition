@@ -10,6 +10,7 @@ import {
 import Navbar from '../../components/Navbar';
 import SpinningCoin3D from '../../components/SpinningCoin3D';
 import habitionCoin from '../../assets/habition_coin.png';
+import Loading from '../../components/Loading';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,7 @@ const DashboardPage = () => {
   // Stats
   const [streak, setStreak] = useState(0);
   const [personalBest, setPersonalBest] = useState(0);
+  const [todayEarned, setTodayEarned] = useState(false);
 
   // Habits
   const [habits, setHabits] = useState<HabitWithTasks[]>([]);
@@ -76,6 +78,7 @@ const DashboardPage = () => {
     getStreak(userId).then(r => {
       setStreak(r.data.currentStreak);
       setPersonalBest(r.data.personalBest);
+      setTodayEarned(r.data.todayEarned);
     }).catch(() => {});
   };
 
@@ -238,7 +241,9 @@ const DashboardPage = () => {
             style={{ background: 'linear-gradient(135deg, #26215C, #534AB7)', border: '1px solid rgba(83,74,183,0.5)' }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium mb-1" style={{ color: '#AFA9EC' }}>Current streak</p>
+                <p className="text-sm font-medium mb-1" style={{ color: '#AFA9EC' }}>
+                  Current streak {todayEarned ? ' (Today: Completed ✅)' : ' (Today: Pending ⏳)'}
+                </p>
                 <p className="text-4xl font-bold text-white">{streak} <span className="text-2xl">🔥</span></p>
                 <p className="text-xs mt-1" style={{ color: '#AFA9EC' }}>Personal best: {personalBest} days</p>
               </div>
@@ -275,8 +280,7 @@ const DashboardPage = () => {
 
           {habitsLoading ? (
             <div className="flex justify-center py-12">
-              <div className="w-8 h-8 rounded-full border-2 animate-spin"
-                style={{ borderColor: '#534AB7', borderTopColor: 'transparent' }} />
+              <Loading size={24} />
             </div>
           ) : habits.length === 0 ? (
             <div className="text-center py-16 rounded-2xl" style={{ background: '#2C2C2A', border: '1px solid #363634' }}>

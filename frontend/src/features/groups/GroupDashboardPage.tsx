@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { getGroup, addHabit, deleteGroupHabit, changeDeadline, promoteToAdmin, type GroupResponse, type GroupHabit } from '../../api/groupApi';
-import { completeHabit, getTasks, createTask, toggleTask, deleteTask, getHabits, createGroupTrackingHabit, type HabitTask } from '../../api/habitApi';
+import { completeHabit, getTasks, createTask, toggleTask, deleteTask, getHabits, createGroupTrackingHabit, getGroupStreak, type HabitTask } from '../../api/habitApi';
 import { getLeaderboard, resetGroupCoins, type LeaderboardEntry } from '../../api/coinApi';
 import { getUsers, type UserProfile } from '../../api/authApi';
 import { getGroupHeatmap, type HeatmapDay } from '../../api/habitApi';
@@ -10,6 +10,7 @@ import Navbar from '../../components/Navbar';
 import habitionCoin from '../../assets/habition_coin.png';
 import SpinningCoin3D from '../../components/SpinningCoin3D';
 import HeatmapView from '../../components/HeatmapView';
+import Loading from '../../components/Loading';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,10 @@ const GroupDashboardPage = () => {
   const [coins, setCoins] = useState<number | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [myRank, setMyRank] = useState<number | null>(null);
+
+  const [streak, setStreak] = useState(0);
+  const [personalBest, setPersonalBest] = useState(0);
+  const [todayEarned, setTodayEarned] = useState(false);
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [taskInputs, setTaskInputs] = useState<Record<number, string>>({});
@@ -113,6 +118,17 @@ const GroupDashboardPage = () => {
       .catch(() => { setMyRank(1); setCoins(0); });
   };
 
+  const loadGroupStats = () => {
+    if (!groupId || !userId) return;
+    getGroupStreak(Number(groupId), userId)
+      .then(r => {
+        setStreak(r.data.currentStreak);
+        setPersonalBest(r.data.personalBest);
+        setTodayEarned(r.data.todayEarned);
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     if (!groupId || !userId) return;
     Promise.all([
@@ -162,8 +178,10 @@ const GroupDashboardPage = () => {
       .catch(() => setHeatmapData(generateMockData()));
       
     loadLeaderboard();
+    loadGroupStats();
     const interval = setInterval(() => {
       loadLeaderboard();
+      loadGroupStats();
     }, 5000); // Poll leaderboard every 5 seconds
 
     return () => clearInterval(interval);
@@ -352,8 +370,7 @@ const GroupDashboardPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#1a1a18' }}>
-        <div className="w-8 h-8 rounded-full border-2 animate-spin"
-          style={{ borderColor: '#534AB7', borderTopColor: 'transparent' }} />
+        <Loading size={32} />
       </div>
     );
   }
@@ -432,7 +449,22 @@ const GroupDashboardPage = () => {
 
         {/* Create Modal */}
         {/* Stats row */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {/* Streak */}
+          <div className="col-span-2 rounded-2xl p-5 animate-fade-up delay-100"
+            style={{ background: 'linear-gradient(135deg, #26215C, #534AB7)', border: '1px solid rgba(83,74,183,0.5)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium mb-1" style={{ color: '#AFA9EC' }}>
+                  Group streak {todayEarned ? ' (Today: Completed ✅)' : ' (Today: Pending ⏳)'}
+                </p>
+                <p className="text-4xl font-bold text-white">{streak} <span className="text-2xl">🔥</span></p>
+                <p className="text-xs mt-1" style={{ color: '#AFA9EC' }}>Best: {personalBest} days</p>
+              </div>
+              <div className="text-5xl select-none hidden sm:block">🔥</div>
+            </div>
+          </div>
+
           {/* Coins */}
           <div className="rounded-2xl p-5 animate-fade-up delay-100"
             style={{ background: 'linear-gradient(135deg, #712B13, #993C1D)', border: '1px solid rgba(216,90,48,0.4)' }}>

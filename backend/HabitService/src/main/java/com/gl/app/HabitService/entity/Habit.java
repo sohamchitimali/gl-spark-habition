@@ -35,5 +35,15 @@ public class Habit {
 
     /** Reference to the GroupService's group_habits table (denormalized). */
     private Long groupHabitId;
+
+    @Column(updatable = false)
+    private java.time.LocalDate createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = java.time.LocalDate.now();
+        }
+    }
 }
 

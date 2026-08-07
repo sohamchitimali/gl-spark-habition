@@ -189,4 +189,12 @@ public class HabitController {
     public ResponseEntity<StreakResponse> getStreak(@PathVariable Long userId) {
         return ResponseEntity.ok(habitService.getStreak(userId));
     }
+
+    /**
+     * Retrieves current and best group streak for a user in a specific group.
+     */
+    @GetMapping("/groups/{groupId}/users/{userId}/streak")
+    public ResponseEntity<StreakResponse> getGroupStreak(@PathVariable Long groupId, @PathVariable Long userId) {
+        return ResponseEntity.ok(habitService.getGroupStreak(userId, groupId));
+    }
 }

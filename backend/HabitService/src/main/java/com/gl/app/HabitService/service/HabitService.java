@@ -6,6 +6,8 @@ import com.gl.app.HabitService.entity.Habit;
 import com.gl.app.HabitService.entity.HabitCompletion;
 import com.gl.app.HabitService.entity.HabitTask;
 import com.gl.app.HabitService.entity.HeatmapRecord;
+import com.gl.app.HabitService.entity.DailyStreakSnapshot;
+import com.gl.app.HabitService.repository.DailyStreakSnapshotRepository;
 import com.gl.app.HabitService.repository.HabitCompletionRepository;
 import com.gl.app.HabitService.repository.HabitRepository;
 import com.gl.app.HabitService.repository.HabitTaskRepository;
@@ -43,6 +45,9 @@ public class HabitService {
     private HabitCompletionRepository completionRepository;
 
     @Autowired
+    private DailyStreakSnapshotRepository snapshotRepository;
+
+    @Autowired
     private HabitTaskRepository taskRepository;
 
     @Autowired
@@ -62,7 +67,7 @@ public class HabitService {
      * @return the saved {@link HabitResponse}
      */
     public HabitResponse createPersonalHabit(String title, String description, Long userId) {
-        Habit habit = new Habit(null, title, description, userId, null, null);
+        Habit habit = new Habit(null, title, description, userId, null, null, null);
         Habit saved = habitRepository.save(habit);
         return toHabitResponse(saved);
     }
@@ -78,7 +83,7 @@ public class HabitService {
      * @return the saved {@link HabitResponse}
      */
     public HabitResponse createGroupTrackingHabit(Long groupId, Long groupHabitId, String title, String description, Long userId) {
-        Habit habit = new Habit(null, title, description, userId, groupId, groupHabitId);
+        Habit habit = new Habit(null, title, description, userId, groupId, groupHabitId, null);
         Habit saved = habitRepository.save(habit);
         return toHabitResponse(saved);
     }
@@ -246,6 +251,8 @@ public class HabitService {
         HabitCompletion completion = new HabitCompletion(null, habitId, userId, today, LocalDateTime.now());
         completionRepository.save(completion);
 
+        updateStreakSnapshots(userId, today);
+
         int streak = calculateStreak(userId);
         int coinsEarned = 1;
         if (streak > 0 && streak % STREAK_BONUS_INTERVAL == 0) {
@@ -270,30 +277,91 @@ public class HabitService {
      * @return the number of consecutive fully-completed days up to and including today
      */
     public int calculateStreak(Long userId) {
-        List<Habit> habits = habitRepository.findByUserId(userId);
-        if (habits.isEmpty()) return 0;
-        long totalHabits = habits.size();
+        return calculateStreakByGroup(userId, null);
+    }
 
-        // Get all distinct completion dates with their count of completed habits
-        List<Object[]> rawCounts = completionRepository.countCompletionsByDateForUser(userId);
+    public int calculateGroupStreak(Long userId, Long groupId) {
+        return calculateStreakByGroup(userId, groupId);
+    }
 
+    private int calculateStreakByGroup(Long userId, Long groupId) {
+        LocalDate today = LocalDate.now();
         int streak = 0;
-        LocalDate expected = LocalDate.now();
+        
+        // Evaluate today dynamically (since admin might have added a habit today)
+        boolean todayEarned = evaluateStreakForDate(userId, groupId, today);
+        if (todayEarned) {
+            streak++;
+        }
 
-        for (Object[] row : rawCounts) {
-            LocalDate date = (LocalDate) row[0];
-            long count = ((Number) row[1]).longValue();
+        // For past days, rely on the snapshot
+        List<DailyStreakSnapshot> earnedSnapshots;
+        if (groupId == null) {
+            earnedSnapshots = snapshotRepository.findPersonalEarnedSnapshotsDesc(userId);
+        } else {
+            earnedSnapshots = snapshotRepository.findGroupEarnedSnapshotsDesc(userId, groupId);
+        }
 
-            if (date.equals(expected) && count >= totalHabits) {
+        LocalDate expected = today.minusDays(1);
+        for (DailyStreakSnapshot snapshot : earnedSnapshots) {
+            if (snapshot.getSnapshotDate().equals(today)) {
+                continue; // Already handled today dynamically
+            }
+            if (snapshot.getSnapshotDate().equals(expected)) {
                 streak++;
                 expected = expected.minusDays(1);
-            } else if (date.isBefore(expected)) {
-                // Gap or incomplete day — streak broken
+            } else if (snapshot.getSnapshotDate().isBefore(expected)) {
                 break;
             }
-            // If count < totalHabits on this date, skip without incrementing
         }
         return streak;
+    }
+
+    private void updateStreakSnapshots(Long userId, LocalDate date) {
+        // Personal streak snapshot
+        boolean personalEarned = evaluateStreakForDate(userId, null, date);
+        DailyStreakSnapshot personalSnapshot = snapshotRepository.findPersonalSnapshot(userId, date)
+                .orElse(new DailyStreakSnapshot(null, userId, null, date, false, 0, 0));
+        personalSnapshot.setStreakEarned(personalEarned);
+        snapshotRepository.save(personalSnapshot);
+
+        // Group streak snapshots
+        List<Habit> userHabits = habitRepository.findByUserId(userId);
+        Set<Long> groupIds = userHabits.stream()
+                .filter(h -> h.getGroupId() != null)
+                .map(Habit::getGroupId)
+                .collect(Collectors.toSet());
+
+        for (Long groupId : groupIds) {
+            boolean groupEarned = evaluateStreakForDate(userId, groupId, date);
+            DailyStreakSnapshot groupSnapshot = snapshotRepository.findGroupSnapshot(userId, groupId, date)
+                    .orElse(new DailyStreakSnapshot(null, userId, groupId, date, false, 0, 0));
+            groupSnapshot.setStreakEarned(groupEarned);
+            snapshotRepository.save(groupSnapshot);
+        }
+    }
+
+    private boolean evaluateStreakForDate(Long userId, Long groupId, LocalDate date) {
+        List<Habit> habits = habitRepository.findByUserId(userId);
+        if (groupId != null) {
+            habits = habits.stream().filter(h -> groupId.equals(h.getGroupId())).collect(Collectors.toList());
+        }
+        
+        // Filter habits that existed on or before this date
+        habits = habits.stream().filter(h -> {
+            LocalDate createdAt = h.getCreatedAt();
+            return createdAt == null || !createdAt.isAfter(date);
+        }).collect(Collectors.toList());
+
+        if (habits.isEmpty()) return false;
+
+        long completedCount = 0;
+        for (Habit h : habits) {
+            if (completionRepository.existsByHabitIdAndUserIdAndCompletionDate(h.getId(), userId, date)) {
+                completedCount++;
+            }
+        }
+        return completedCount >= habits.size();
     }
 
     /**
@@ -305,7 +373,15 @@ public class HabitService {
     public StreakResponse getStreak(Long userId) {
         int current = calculateStreak(userId);
         int best = calculatePersonalBest(userId);
-        return new StreakResponse(userId, current, best);
+        boolean todayEarned = evaluateStreakForDate(userId, null, LocalDate.now());
+        return new StreakResponse(userId, current, best, todayEarned);
+    }
+
+    public StreakResponse getGroupStreak(Long userId, Long groupId) {
+        int current = calculateGroupStreak(userId, groupId);
+        int best = calculateBestStreakByGroup(userId, groupId);
+        boolean todayEarned = evaluateStreakForDate(userId, groupId, LocalDate.now());
+        return new StreakResponse(userId, current, best, todayEarned);
     }
 
     /**
@@ -360,17 +436,28 @@ public class HabitService {
      * @return the longest consecutive streak recorded
      */
     private int calculatePersonalBest(Long userId) {
-        List<Habit> habits = habitRepository.findByUserId(userId);
-        if (habits.isEmpty()) return 0;
-        long totalHabits = habits.size();
+        return calculateBestStreakByGroup(userId, null);
+    }
 
-        List<Object[]> rawCounts = completionRepository.countCompletionsByDateForUser(userId);
+    private int calculateBestStreakByGroup(Long userId, Long groupId) {
+        List<DailyStreakSnapshot> earnedSnapshots;
+        if (groupId == null) {
+            earnedSnapshots = snapshotRepository.findPersonalEarnedSnapshotsDesc(userId);
+        } else {
+            earnedSnapshots = snapshotRepository.findGroupEarnedSnapshotsDesc(userId, groupId);
+        }
 
-        // Filter to only fully-completed days
-        List<LocalDate> fullDays = rawCounts.stream()
-                .filter(row -> ((Number) row[1]).longValue() >= totalHabits)
-                .map(row -> (LocalDate) row[0])
+        LocalDate today = LocalDate.now();
+        boolean todayEarned = evaluateStreakForDate(userId, groupId, today);
+
+        List<LocalDate> fullDays = earnedSnapshots.stream()
+                .map(DailyStreakSnapshot::getSnapshotDate)
+                .filter(d -> !d.equals(today))
                 .collect(Collectors.toList());
+
+        if (todayEarned) {
+            fullDays.add(0, today);
+        }
 
         if (fullDays.isEmpty()) return 0;
 

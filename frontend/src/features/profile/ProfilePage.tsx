@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { getProfile, updateProfile, type Profile } from '../../api/authApi';
 import Navbar from '../../components/Navbar';
+import Loading from '../../components/Loading';
+import { HexColorPicker } from 'react-colorful';
 
 const GENRES = [
   'Productivity', 'Fitness & Health', 'Coding & Tech', 
@@ -23,6 +25,7 @@ const ProfilePage = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -67,8 +70,7 @@ const ProfilePage = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#1a1a18' }}>
-        <div className="w-8 h-8 rounded-full border-2 animate-spin"
-          style={{ borderColor: '#534AB7', borderTopColor: 'transparent' }} />
+        <Loading size={32} />
       </div>
     );
   }
@@ -133,15 +135,26 @@ const ProfilePage = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Theme Color</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={form.preferredColor}
-                    onChange={(e) => setForm({ ...form, preferredColor: e.target.value })}
-                    className="w-12 h-12 rounded-xl border-none outline-none cursor-pointer p-0"
-                    style={{ background: 'transparent' }}
-                  />
-                  <span className="text-sm font-mono" style={{ color: '#B4B2A9' }}>{form.preferredColor}</span>
+                <div className="relative">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowColorPicker(!showColorPicker)}
+                      className="w-12 h-12 rounded-xl transition-transform hover:scale-105 active:scale-95"
+                      style={{ background: form.preferredColor, border: '2px solid #424240' }}
+                    />
+                    <span className="text-sm font-mono" style={{ color: '#B4B2A9' }}>{form.preferredColor}</span>
+                  </div>
+                  
+                  {showColorPicker && (
+                    <div className="absolute top-14 left-0 z-50 p-3 rounded-2xl shadow-xl animate-fade-up" style={{ background: '#363634', border: '1px solid #424240' }}>
+                      <div className="mb-3 flex justify-between items-center">
+                        <span className="text-xs font-semibold text-white">Pick a color</span>
+                        <button type="button" onClick={() => setShowColorPicker(false)} className="text-gray-400 hover:text-white">✕</button>
+                      </div>
+                      <HexColorPicker color={form.preferredColor} onChange={(c) => setForm({ ...form, preferredColor: c })} />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

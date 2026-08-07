@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
+import Loading from '../../components/Loading';
 
 import { getMyGroups, type GroupResponse } from '../../api/groupApi';
 
@@ -18,7 +19,7 @@ const GroupsPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#1a1a18' }}>
-        <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: '#534AB7', borderTopColor: 'transparent' }} />
+        <Loading size={32} />
       </div>
     );
   }

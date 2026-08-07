@@ -6,6 +6,7 @@ import com.gl.app.HabitService.dto.HeatmapResponse;
 import com.gl.app.HabitService.dto.StreakResponse;
 import com.gl.app.HabitService.entity.Habit;
 import com.gl.app.HabitService.entity.HabitCompletion;
+import com.gl.app.HabitService.repository.DailyStreakSnapshotRepository;
 import com.gl.app.HabitService.repository.HabitCompletionRepository;
 import com.gl.app.HabitService.repository.HabitRepository;
 import com.gl.app.HabitService.repository.HabitTaskRepository;
@@ -46,6 +47,9 @@ class HabitServiceTest {
     private com.gl.app.HabitService.repository.HeatmapRecordRepository heatmapRecordRepository;
 
     @Mock
+    private DailyStreakSnapshotRepository snapshotRepository;
+
+    @Mock
     private CoinServiceClient coinServiceClient;
 
     @InjectMocks
@@ -57,16 +61,20 @@ class HabitServiceTest {
         // Arrange
         Long habitId = 1L;
         Long userId = 10L;
-        Habit habit = new Habit(habitId, "Morning Run", "Run every morning", userId, null, null);
+        Habit habit = new Habit(habitId, "Morning Run", "Run every morning", userId, null, null, null);
 
         when(habitRepository.findById(habitId)).thenReturn(Optional.of(habit));
-        when(completionRepository.existsByHabitIdAndUserIdAndCompletionDate(habitId, userId, LocalDate.now()))
-                .thenReturn(false);
+        java.util.concurrent.atomic.AtomicInteger callCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        when(completionRepository.existsByHabitIdAndUserIdAndCompletionDate(anyLong(), anyLong(), any()))
+                .thenAnswer(invocation -> {
+                    return callCount.getAndIncrement() > 0;
+                });
         when(taskRepository.countByHabitIdAndCompleted(habitId, false)).thenReturn(0L);
         when(completionRepository.save(any(HabitCompletion.class))).thenReturn(new HabitCompletion());
         when(habitRepository.findByUserId(userId)).thenReturn(List.of(habit));
-        when(completionRepository.countCompletionsByDateForUser(userId))
-                .thenReturn(List.<Object[]>of(new Object[]{LocalDate.now(), 1L}));
+        
+        when(snapshotRepository.findPersonalSnapshot(eq(userId), any())).thenReturn(Optional.empty());
+        when(snapshotRepository.findPersonalEarnedSnapshotsDesc(userId)).thenReturn(List.of());
 
         // Act
         CompleteHabitResponse response = habitService.completeHabit(habitId, userId);
@@ -86,7 +94,7 @@ class HabitServiceTest {
         // Arrange
         Long habitId = 1L;
         Long userId = 10L;
-        Habit habit = new Habit(habitId, "Morning Run", "Run every morning", userId, null, null);
+        Habit habit = new Habit(habitId, "Morning Run", "Run every morning", userId, null, null, null);
 
         when(habitRepository.findById(habitId)).thenReturn(Optional.of(habit));
         when(completionRepository.existsByHabitIdAndUserIdAndCompletionDate(habitId, userId, LocalDate.now()))
@@ -111,13 +119,15 @@ class HabitServiceTest {
                 LocalDate.now().minusDays(1),
                 LocalDate.now().minusDays(2)
         );
-        Habit mockHabit = new Habit(1L, "Morning Run", "Run every morning", userId, null, null);
+        Habit mockHabit = new Habit(1L, "Morning Run", "Run every morning", userId, null, null, null);
         when(habitRepository.findByUserId(userId)).thenReturn(List.of(mockHabit));
-        when(completionRepository.countCompletionsByDateForUser(userId)).thenReturn(List.of(
-                new Object[]{LocalDate.now(), 1L},
-                new Object[]{LocalDate.now().minusDays(1), 1L},
-                new Object[]{LocalDate.now().minusDays(2), 1L}
+        
+        when(snapshotRepository.findPersonalEarnedSnapshotsDesc(userId)).thenReturn(List.of(
+            new com.gl.app.HabitService.entity.DailyStreakSnapshot(1L, userId, null, LocalDate.now().minusDays(1), true, 1, 1),
+            new com.gl.app.HabitService.entity.DailyStreakSnapshot(2L, userId, null, LocalDate.now().minusDays(2), true, 1, 1)
         ));
+        when(completionRepository.existsByHabitIdAndUserIdAndCompletionDate(anyLong(), anyLong(), any()))
+            .thenReturn(true);
 
         // Act
         StreakResponse response = habitService.getStreak(userId);

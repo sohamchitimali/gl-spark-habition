@@ -14,4 +14,5 @@ public class StreakResponse {
     private Long userId;
     private int currentStreak;
     private int personalBest;
+    private boolean todayEarned;
 }
