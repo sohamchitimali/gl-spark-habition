@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 
 type ViewMode = 'monthly' | 'yearly';
 
@@ -47,7 +47,7 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ heatmapData, title }) => {
   const [view, setView] = useState<ViewMode>('monthly');
   const [selectedYear, setSelectedYear] = useState<number | 'trailing'>('trailing');
   
-  const today = new Date();
+  const today = useMemo(() => new Date(), []);
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
 

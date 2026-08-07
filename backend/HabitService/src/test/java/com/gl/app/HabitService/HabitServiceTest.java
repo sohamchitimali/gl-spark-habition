@@ -43,6 +43,9 @@ class HabitServiceTest {
     private HabitTaskRepository taskRepository;
 
     @Mock
+    private com.gl.app.HabitService.repository.HeatmapRecordRepository heatmapRecordRepository;
+
+    @Mock
     private CoinServiceClient coinServiceClient;
 
     @InjectMocks
@@ -125,15 +128,15 @@ class HabitServiceTest {
     }
 
     @Test
-    @DisplayName("US-005: getHeatmap should return list of daily completion counts")
-    void getHeatmap_shouldReturnDailyCompletionCounts() {
+    @DisplayName("US-005: getHeatmap should return list of daily completion percentages")
+    void getHeatmap_shouldReturnDailyCompletionPercentages() {
         // Arrange
         Long userId = 10L;
         LocalDate today = LocalDate.now();
-        when(completionRepository.countCompletionsByDateForUser(userId))
+        when(heatmapRecordRepository.findByUserIdAndGroupIdIsNullOrderByRecordDateDesc(userId))
                 .thenReturn(List.of(
-                        new Object[]{today, 3L},
-                        new Object[]{today.minusDays(1), 2L}
+                        new com.gl.app.HabitService.entity.HeatmapRecord(1L, userId, null, today, 4, 2, 50),
+                        new com.gl.app.HabitService.entity.HeatmapRecord(2L, userId, null, today.minusDays(1), 5, 5, 100)
                 ));
 
         // Act
@@ -142,6 +145,6 @@ class HabitServiceTest {
         // Assert
         assertThat(response.getUserId()).isEqualTo(userId);
         assertThat(response.getDays()).hasSize(2);
-        assertThat(response.getDays().get(0).getCompletionCount()).isEqualTo(3);
+        assertThat(response.getDays().get(0).getCompletionPercentage()).isEqualTo(50);
     }
 }

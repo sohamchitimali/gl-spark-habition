@@ -44,7 +44,7 @@ export const getHeatmap = (userId: number) =>
   axiosInstance.get<HeatmapResponse>(`/users/${userId}/heatmap`);
 
 export const getGroupHeatmap = (groupId: number) =>
-  axiosInstance.get<HeatmapResponse>(`/groups/${groupId}/heatmap`);
+  axiosInstance.get<HeatmapResponse>(`/habits/groups/${groupId}/heatmap`);
 
 export const getStreak = (userId: number) =>
   axiosInstance.get<StreakResponse>(`/users/${userId}/streak`);

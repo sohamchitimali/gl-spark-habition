@@ -174,7 +174,7 @@ public class HabitController {
      * @param groupId the group whose heatmap data is requested
      * @return 200 OK with list of daily completion percentages
      */
-    @GetMapping("/groups/{groupId}/heatmap")
+    @GetMapping("/habits/groups/{groupId}/heatmap")
     public ResponseEntity<HeatmapResponse> getGroupHeatmap(@PathVariable Long groupId) {
         return ResponseEntity.ok(habitService.getGroupHeatmap(groupId));
     }

@@ -14,5 +14,5 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class HeatmapDay {
     private LocalDate date;
-    private int completionCount;
+    private int completionPercentage;
 }
