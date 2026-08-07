@@ -79,7 +79,7 @@ const DashboardPage = () => {
       setStreak(r.data.currentStreak);
       setPersonalBest(r.data.personalBest);
       setTodayEarned(r.data.todayEarned);
-    }).catch(() => {});
+    }).catch(() => { });
   };
 
   useEffect(() => {
@@ -87,7 +87,7 @@ const DashboardPage = () => {
     loadStats();
     getHabits(userId).then(r => {
       setHabits(r.data.map(h => ({ ...h, tasksLoaded: true })));
-    }).catch(() => {}).finally(() => setHabitsLoading(false));
+    }).catch(() => { }).finally(() => setHabitsLoading(false));
 
     const interval = setInterval(() => {
       loadStats();
@@ -151,7 +151,7 @@ const DashboardPage = () => {
       loadStats(); // refresh coins
 
       const allDone = updatedHabits.every(h => h.completedToday);
-      
+
       setShowCoinAnimation(true);
       setTimeout(() => setShowCoinAnimation(false), 2500);
 

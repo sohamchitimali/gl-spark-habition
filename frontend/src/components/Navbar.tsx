@@ -2,6 +2,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useState, useEffect } from 'react';
 import { getUserBalance } from '../api/coinApi';
+import habitionCoin from '../assets/habition_logo_green.svg';
 
 const Navbar = () => {
   const { userId, logout } = useAuth();
@@ -28,8 +29,7 @@ const Navbar = () => {
       style={{ background: 'rgba(44,44,42,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #363634' }}>
       {/* Logo */}
       <Link to="/dashboard" className="flex items-center gap-2 no-underline">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-          style={{ background: 'linear-gradient(135deg, #7F77DD, #D85A30)' }}>H</div>
+        <img src={habitionCoin} alt="Habition Logo" className="w-8 h-8" />
         <span className="text-white font-bold text-lg hidden sm:block">habition</span>
       </Link>
 

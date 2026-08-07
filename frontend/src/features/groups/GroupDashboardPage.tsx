@@ -126,7 +126,7 @@ const GroupDashboardPage = () => {
         setPersonalBest(r.data.personalBest);
         setTodayEarned(r.data.todayEarned);
       })
-      .catch(() => {});
+      .catch(() => { });
   };
 
   useEffect(() => {
@@ -176,7 +176,7 @@ const GroupDashboardPage = () => {
         setHeatmapData(map);
       })
       .catch(() => setHeatmapData(generateMockData()));
-      
+
     loadLeaderboard();
     loadGroupStats();
     const interval = setInterval(() => {
@@ -459,7 +459,7 @@ const GroupDashboardPage = () => {
                   Group streak {todayEarned ? ' (Today: Completed ✅)' : ' (Today: Pending ⏳)'}
                 </p>
                 <p className="text-4xl font-bold text-white">{streak} <span className="text-2xl">🔥</span></p>
-                <p className="text-xs mt-1" style={{ color: '#AFA9EC' }}>Best: {personalBest} days</p>
+                <p className="text-xs mt-1" style={{ color: '#AFA9EC' }}>Personal Best: {personalBest} days</p>
               </div>
               <div className="text-5xl select-none hidden sm:block">🔥</div>
             </div>
