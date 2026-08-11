@@ -109,6 +109,11 @@
 			<artifactId>h2</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.meilisearch.sdk</groupId>
+			<artifactId>meilisearch-java</artifactId>
+			<version>0.12.0</version>
+		</dependency>
 	</dependencies>
 
 	<build>

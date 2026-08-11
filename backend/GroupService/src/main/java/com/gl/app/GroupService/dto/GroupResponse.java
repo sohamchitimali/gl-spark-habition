@@ -22,6 +22,9 @@ public class GroupResponse {
     private List<Long> memberIds;
     private List<Long> adminIds;
     private List<GroupHabitResponse> habits;
+    private String visibility;
+    private Boolean hasPendingRequests;
+    private Boolean currentUserRequested;
     
     private String description;
     private String duration;

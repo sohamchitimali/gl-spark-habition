@@ -51,4 +51,21 @@ public class Group {
     
     /** Duration of the competition (e.g. 'Days', 'Weeks', 'Months', 'Indefinite'). */
     private String duration;
+
+    @Enumerated(EnumType.STRING)
+    private Discoverability visibility = Discoverability.INVITE_ONLY;
+    
+    private Double latitude;
+    private Double longitude;
+    private String addressDisplay;
+    
+    private Integer memberCount = 0;
+    
+    @ManyToMany
+    @JoinTable(
+        name = "group_tags",
+        joinColumns = @JoinColumn(name = "group_id"),
+        inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private java.util.List<Tag> tags = new java.util.ArrayList<>();
 }

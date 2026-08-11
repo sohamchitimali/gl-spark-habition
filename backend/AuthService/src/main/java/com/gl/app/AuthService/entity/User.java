@@ -24,12 +24,10 @@ public class User {
     
     private String refreshToken;
 
-    // Profile fields
-    private String name;
-    private String preferredColor;
-    private String location;
-    private String genreOfInterest;
+    // Core fields
+    @Column(unique = true)
+    private String username;
     
-    @Column(columnDefinition = "TEXT")
-    private String bio;
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    private UserProfile profile;
 }

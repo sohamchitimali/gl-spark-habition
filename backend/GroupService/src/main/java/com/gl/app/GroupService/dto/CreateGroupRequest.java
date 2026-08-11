@@ -15,5 +15,11 @@ public class CreateGroupRequest {
     
     private String description;
     
-    private String duration;
+    private String visibility;
+    private Integer years;
+    private Integer months;
+    private Integer weeks;
+    private Integer days;
+    
+    private java.util.List<Long> inviteFriendIds;
 }

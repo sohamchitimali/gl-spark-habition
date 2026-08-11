@@ -3,13 +3,12 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import {
   getHabits, createHabit, completeHabit, deleteHabit,
-  getTasks, createTask, toggleTask, deleteTask,
+  createTask, toggleTask, deleteTask,
   getStreak,
   type Habit, type HabitTask,
 } from '../../api/habitApi';
 import Navbar from '../../components/Navbar';
 import SpinningCoin3D from '../../components/SpinningCoin3D';
-import habitionCoin from '../../assets/habition_coin.png';
 import Loading from '../../components/Loading';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -186,7 +185,7 @@ const DashboardPage = () => {
     if (!newTitle.trim()) return;
     setCreating(true);
     try {
-      const res = await createHabit(newTitle.trim(), newDesc.trim() || undefined);
+      const res = await createHabit(newTitle.trim(), newDesc.trim() || '');
       setHabits(prev => [...prev, { ...res.data, tasksLoaded: true }]);
       setNewTitle('');
       setNewDesc('');

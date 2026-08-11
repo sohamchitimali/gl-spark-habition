@@ -26,7 +26,6 @@ const LeaderboardPage = () => {
   const [group, setGroup] = useState<GroupResponse | null>(null);
   const [users, setUsers] = useState<Record<number, UserProfile>>({});
 
-  const mockEntries: LeaderboardEntry[] = [];
 
   useEffect(() => {
     if (!groupId) return;

@@ -40,6 +40,12 @@ class GroupServiceTest {
     @Mock
     private GroupHabitRepository groupHabitRepository;
 
+    @Mock
+    private com.gl.app.GroupService.service.MeilisearchSyncService meilisearchSyncService;
+
+    @Mock
+    private com.gl.app.GroupService.repository.GroupJoinRequestRepository groupJoinRequestRepository;
+
     @InjectMocks
     private GroupService groupService;
 
@@ -51,7 +57,12 @@ class GroupServiceTest {
         request.setName("Morning Warriors");
         Long userId = 1L;
 
-        Group savedGroup = new Group(1L, "Morning Warriors", "ABCD1234", userId, null, null, false, null, null);
+        Group savedGroup = new Group();
+        savedGroup.setId(1L);
+        savedGroup.setName("Morning Warriors");
+        savedGroup.setInviteCode("ABCD1234");
+        savedGroup.setOwnerId(userId);
+        savedGroup.setCompetitionActive(false);
         when(groupRepository.save(any(Group.class))).thenReturn(savedGroup);
         when(groupMemberRepository.save(any(GroupMember.class))).thenReturn(new GroupMember());
         when(groupMemberRepository.findByGroupId(1L)).thenReturn(List.of(new GroupMember(1L, 1L, userId, null, true)));
@@ -76,7 +87,12 @@ class GroupServiceTest {
         request.setInviteCode("ABCD1234");
         Long userId = 2L;
 
-        Group group = new Group(1L, "Morning Warriors", "ABCD1234", 1L, null, null, false, null, null);
+        Group group = new Group();
+        group.setId(1L);
+        group.setName("Morning Warriors");
+        group.setInviteCode("ABCD1234");
+        group.setOwnerId(1L);
+        group.setCompetitionActive(false);
         when(groupRepository.findByInviteCode("ABCD1234")).thenReturn(Optional.of(group));
         when(groupMemberRepository.existsByGroupIdAndUserId(1L, userId)).thenReturn(false);
         when(groupMemberRepository.save(any(GroupMember.class))).thenReturn(new GroupMember());
@@ -114,7 +130,12 @@ class GroupServiceTest {
         request.setTitle("Morning Run");
         request.setDescription("Run 5km every morning");
 
-        Group group = new Group(1L, "Warriors", "CODE", 1L, null, null, false, null, null);
+        Group group = new Group();
+        group.setId(1L);
+        group.setName("Warriors");
+        group.setInviteCode("CODE");
+        group.setOwnerId(1L);
+        group.setCompetitionActive(false);
         when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
         GroupHabit saved = new GroupHabit(10L, groupId, "Morning Run", "Run 5km every morning");
         when(groupHabitRepository.save(any(GroupHabit.class))).thenReturn(saved);

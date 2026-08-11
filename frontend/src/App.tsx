@@ -7,11 +7,16 @@ import RegisterPage from './features/auth/RegisterPage';
 import DashboardPage from './features/dashboard/DashboardPage';
 import GroupsPage from './features/groups/GroupsPage';
 import GroupDashboardPage from './features/groups/GroupDashboardPage';
+import GroupJoinRequestsPage from './features/groups/GroupJoinRequestsPage';
 import CreateGroupPage from './features/groups/CreateGroupPage';
 import JoinGroupPage from './features/groups/JoinGroupPage';
+import DiscoverGroupsPage from './features/groups/DiscoverGroupsPage';
 import LeaderboardPage from './features/leaderboard/LeaderboardPage';
 import HeatmapPage from './features/heatmap/HeatmapPage';
 import ProfilePage from './features/profile/ProfilePage';
+import ChatsPage from './features/chats/ChatsPage';
+import MySentRequestsPage from './features/groups/MySentRequestsPage';
+import DiscoverUsersPage from './features/users/DiscoverUsersPage';
 
 /**
  * Root application component.
@@ -31,8 +36,13 @@ function App() {
           <Route path="/groups"    element={<ProtectedRoute><GroupsPage /></ProtectedRoute>} />
           <Route path="/groups/create" element={<ProtectedRoute><CreateGroupPage /></ProtectedRoute>} />
           <Route path="/groups/join"   element={<ProtectedRoute><JoinGroupPage /></ProtectedRoute>} />
+          <Route path="/groups/discover" element={<ProtectedRoute><DiscoverGroupsPage /></ProtectedRoute>} />
+          <Route path="/groups/my-requests" element={<ProtectedRoute><MySentRequestsPage /></ProtectedRoute>} />
           <Route path="/groups/:groupId" element={<ProtectedRoute><GroupDashboardPage /></ProtectedRoute>} />
+          <Route path="/groups/:groupId/join-requests" element={<ProtectedRoute><GroupJoinRequestsPage /></ProtectedRoute>} />
           <Route path="/groups/:groupId/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
+          <Route path="/chats" element={<ProtectedRoute><ChatsPage /></ProtectedRoute>} />
+          <Route path="/people" element={<ProtectedRoute><DiscoverUsersPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/heatmap" element={<ProtectedRoute><HeatmapPage /></ProtectedRoute>} />
 

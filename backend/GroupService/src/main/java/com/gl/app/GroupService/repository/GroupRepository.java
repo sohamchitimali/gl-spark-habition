@@ -17,4 +17,5 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
      * @return an Optional containing the group, or empty if not found
      */
     Optional<Group> findByInviteCode(String inviteCode);
+    java.util.List<Group> findByOwnerId(Long ownerId);
 }

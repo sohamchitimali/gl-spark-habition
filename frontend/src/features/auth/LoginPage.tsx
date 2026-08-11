@@ -68,13 +68,13 @@ const LoginPage = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Email</label>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Email or Username</label>
                 <input
                   id="login-email"
-                  type="email"
+                  type="text"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="you@example.com"
+                  placeholder="you@example.com or username"
                   required
                   className="w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 outline-none transition-all"
                   style={{ background: '#363634', border: '1px solid #424240' }}

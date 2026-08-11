@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * REST controller exposing group management endpoints.
  * JWT validation is handled at the API Gateway layer;
@@ -21,6 +23,12 @@ public class GroupController {
 
     @Autowired
     private GroupService groupService;
+
+    @Autowired
+    private com.gl.app.GroupService.service.GroupSearchService groupSearchService;
+
+    @Autowired
+    private com.gl.app.GroupService.service.JoinRequestService joinRequestService;
 
     /**
      * Creates a new habit group.
@@ -102,9 +110,37 @@ public class GroupController {
      * @param userId the authenticated user's ID injected by the gateway
      * @return 200 OK with list of groups
      */
-    @GetMapping
-    public ResponseEntity<java.util.List<GroupResponse>> getUserGroups(@RequestHeader("X-User-Id") Long userId) {
+    @GetMapping("/my-groups")
+    public ResponseEntity<List<GroupResponse>> getMyGroups(@RequestHeader("X-User-Id") Long userId) {
         return ResponseEntity.ok(groupService.getUserGroups(userId));
+    }
+
+    /**
+     * Search groups using hybrid Meilisearch + Postgres approach.
+     * Relates to US-003.
+     */
+    @PostMapping("/search")
+    public ResponseEntity<List<GroupResponse>> searchGroups(
+            @RequestBody SearchGroupRequest request,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        List<com.gl.app.GroupService.entity.Group> groups = groupSearchService.searchGroups(
+                request.getQuery(), 
+                request.getUserTags(), 
+                request.getUserLat(), 
+                request.getUserLng()
+        );
+        
+        List<GroupResponse> responses = groups.stream()
+                .map(g -> {
+                    GroupResponse res = groupService.getGroup(g.getId());
+                    if (userId != null) {
+                        res.setCurrentUserRequested(groupService.hasUserRequested(g.getId(), userId));
+                    }
+                    return res;
+                })
+                .collect(java.util.stream.Collectors.toList());
+                
+        return ResponseEntity.ok(responses);
     }
 
     /**
@@ -126,7 +162,7 @@ public class GroupController {
     /**
      * Promotes a member to admin.
      *
-     * @param id        the group ID
+     * @param groupId        the group ID
      * @param targetId  the user ID to promote
      * @param userId    the authenticated user's ID
      * @return 200 OK with updated group
@@ -137,5 +173,41 @@ public class GroupController {
             @PathVariable Long targetId,
             @RequestHeader("X-User-Id") Long userId) {
         return ResponseEntity.ok(groupService.promoteToAdmin(id, targetId, userId));
+    }
+
+    @GetMapping("/my-requests")
+    public ResponseEntity<List<com.gl.app.GroupService.dto.SentJoinRequestResponse>> getMySentRequests(
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(joinRequestService.getMySentRequests(userId));
+    }
+
+    /**
+     * Deletes a group entirely. Only accessible by the owner.
+     *
+     * @param id     the group ID
+     * @param userId the authenticated user's ID
+     * @return 204 No Content
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteGroup(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Id") Long userId) {
+        groupService.deleteGroup(id, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Allows a member to leave a group. Owners cannot leave via this endpoint.
+     *
+     * @param id     the group ID
+     * @param userId the authenticated user's ID
+     * @return 204 No Content
+     */
+    @DeleteMapping("/{id}/members/leave")
+    public ResponseEntity<Void> leaveGroup(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Id") Long userId) {
+        groupService.leaveGroup(id, userId);
+        return ResponseEntity.noContent().build();
     }
 }

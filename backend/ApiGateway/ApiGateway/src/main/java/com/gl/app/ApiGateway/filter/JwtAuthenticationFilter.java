@@ -29,7 +29,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         // Bypass authentication for auth endpoints
         String path = request.getURI().getPath();
-        if (path.startsWith("/auth/login") || path.startsWith("/auth/register") || path.startsWith("/auth/refresh")) {
+        if (path.startsWith("/auth/login") || path.startsWith("/auth/register") || path.startsWith("/auth/refresh") || path.startsWith("/auth/check-username")) {
             return chain.filter(exchange);
         }
 

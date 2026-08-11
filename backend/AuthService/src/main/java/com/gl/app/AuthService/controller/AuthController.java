@@ -17,9 +17,17 @@ public class AuthController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private com.gl.app.AuthService.service.UserSearchService userSearchService;
+
     @PostMapping("/register")
     public ResponseEntity<AuthResponseDto> register(@RequestBody AuthRequestDto request) {
         return ResponseEntity.ok(userService.register(request));
+    }
+
+    @GetMapping("/check-username")
+    public ResponseEntity<Boolean> checkUsername(@RequestParam String username) {
+        return ResponseEntity.ok(userService.isUsernameAvailable(username));
     }
 
     @PostMapping("/login")
@@ -37,6 +45,11 @@ public class AuthController {
         return ResponseEntity.ok(userService.getUsersByIds(ids));
     }
 
+    @GetMapping("/users/by-username")
+    public ResponseEntity<com.gl.app.AuthService.dto.UserProfileDto> getUserByUsername(@RequestParam String username) {
+        return ResponseEntity.ok(userService.getUserByUsername(username));
+    }
+
     @GetMapping("/profile")
     public ResponseEntity<ProfileDto> getProfile(@RequestHeader("X-User-Id") Long userId) {
         return ResponseEntity.ok(userService.getProfile(userId));
@@ -45,5 +58,22 @@ public class AuthController {
     @PutMapping("/profile")
     public ResponseEntity<ProfileDto> updateProfile(@RequestHeader("X-User-Id") Long userId, @RequestBody ProfileDto request) {
         return ResponseEntity.ok(userService.updateProfile(userId, request));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<ProfileDto>> searchUsers(
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestParam String query) {
+        // Fetch current user's profile to get their tags and location
+        ProfileDto currentUserProfile = userService.getProfile(userId);
+        List<String> tags = currentUserProfile.getTags() != null ? currentUserProfile.getTags() : List.of();
+        Double lat = currentUserProfile.getLatitude();
+        Double lng = currentUserProfile.getLongitude();
+
+        List<ProfileDto> results = userSearchService.searchUsers(query, tags, lat, lng);
+        if (currentUserProfile.getUsername() != null) {
+            results.removeIf(p -> currentUserProfile.getUsername().equals(p.getUsername()));
+        }
+        return ResponseEntity.ok(results);
     }
 }

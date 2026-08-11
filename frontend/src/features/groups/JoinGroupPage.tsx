@@ -15,7 +15,7 @@ const JoinGroupPage = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await joinGroup(code.trim().toUpperCase());
+      await joinGroup(code.trim().toUpperCase());
       navigate('/groups');
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Invalid or expired invite code.';

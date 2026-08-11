@@ -3,6 +3,7 @@ package com.gl.app.AuthService;
 import com.gl.app.AuthService.dto.AuthRequestDto;
 import com.gl.app.AuthService.dto.AuthResponseDto;
 import com.gl.app.AuthService.entity.User;
+import com.gl.app.AuthService.entity.UserProfile;
 import com.gl.app.AuthService.repository.UserRepository;
 import com.gl.app.AuthService.security.JwtUtil;
 import com.gl.app.AuthService.service.UserService;
@@ -33,10 +34,16 @@ class UserServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private com.gl.app.AuthService.repository.UserProfileRepository userProfileRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
     private JwtUtil jwtUtil;
+
+    @Mock
+    private com.gl.app.AuthService.service.MeilisearchSyncService meilisearchSyncService;
 
     @InjectMocks
     private UserService userService;
@@ -48,12 +55,20 @@ class UserServiceTest {
         AuthRequestDto request = new AuthRequestDto();
         request.setEmail("test@habition.com");
         request.setPassword("SecurePass123");
+        request.setUsername("testuser");
 
         when(userRepository.findByEmail("test@habition.com")).thenReturn(Optional.empty());
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("SecurePass123")).thenReturn("hashed_password");
         when(jwtUtil.generateRefreshToken()).thenReturn("refresh-token-xyz");
-        User saved = new User(1L, "test@habition.com", "hashed_password", "refresh-token-xyz", null, null, null, null, null);
+        User saved = new User();
+        saved.setId(1L);
+        saved.setEmail("test@habition.com");
+        saved.setUsername("testuser");
+        saved.setPasswordHash("hashed_password");
+        saved.setRefreshToken("refresh-token-xyz");
         when(userRepository.save(any(User.class))).thenReturn(saved);
+        when(userProfileRepository.save(any(UserProfile.class))).thenReturn(new UserProfile());
         when(jwtUtil.generateAccessToken("1")).thenReturn("access-token-xyz");
 
         // Act
@@ -74,8 +89,13 @@ class UserServiceTest {
         request.setEmail("existing@habition.com");
         request.setPassword("Password1");
 
+        User user = new User();
+        user.setId(1L);
+        user.setEmail("existing@habition.com");
+        user.setPasswordHash("hash");
+        user.setRefreshToken("rt");
         when(userRepository.findByEmail("existing@habition.com"))
-                .thenReturn(Optional.of(new User(1L, "existing@habition.com", "hash", "rt", null, null, null, null, null)));
+                .thenReturn(Optional.of(user));
 
         // Act & Assert
         assertThatThrownBy(() -> userService.register(request))
@@ -91,7 +111,11 @@ class UserServiceTest {
         request.setEmail("user@habition.com");
         request.setPassword("password");
 
-        User user = new User(2L, "user@habition.com", "hashed", "old-refresh", null, null, null, null, null);
+        User user = new User();
+        user.setId(2L);
+        user.setEmail("user@habition.com");
+        user.setPasswordHash("hashed");
+        user.setRefreshToken("old-refresh");
         when(userRepository.findByEmail("user@habition.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("password", "hashed")).thenReturn(true);
         when(jwtUtil.generateRefreshToken()).thenReturn("new-refresh-token");
@@ -114,7 +138,11 @@ class UserServiceTest {
         request.setEmail("user@habition.com");
         request.setPassword("wrong-password");
 
-        User user = new User(2L, "user@habition.com", "hashed", "refresh", null, null, null, null, null);
+        User user = new User();
+        user.setId(2L);
+        user.setEmail("user@habition.com");
+        user.setPasswordHash("hashed");
+        user.setRefreshToken("refresh");
         when(userRepository.findByEmail("user@habition.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong-password", "hashed")).thenReturn(false);
 

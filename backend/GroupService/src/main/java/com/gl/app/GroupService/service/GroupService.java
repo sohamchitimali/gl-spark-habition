@@ -7,6 +7,9 @@ import com.gl.app.GroupService.entity.GroupMember;
 import com.gl.app.GroupService.repository.GroupHabitRepository;
 import com.gl.app.GroupService.repository.GroupMemberRepository;
 import com.gl.app.GroupService.repository.GroupRepository;
+import com.gl.app.GroupService.repository.GroupJoinRequestRepository;
+import com.gl.app.GroupService.repository.DirectMessageRepository;
+import com.gl.app.GroupService.entity.RequestStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -35,6 +38,15 @@ public class GroupService {
     @Autowired
     private GroupHabitRepository groupHabitRepository;
 
+    @Autowired
+    private GroupJoinRequestRepository groupJoinRequestRepository;
+
+    @Autowired
+    private DirectMessageRepository directMessageRepository;
+
+    @Autowired
+    private MeilisearchSyncService meilisearchSyncService;
+
     /**
      * Creates a new habit group owned by the given user.
      *
@@ -50,14 +62,26 @@ public class GroupService {
         group.setOwnerId(userId);
         group.setCompetitionActive(false); // Can be enabled if they want to track it
         group.setDescription(request.getDescription());
-        group.setDuration(request.getDuration());
-        
-        // Calculate competition end date if duration is provided
-        LocalDateTime endDate = calculateEndDate(request.getDuration());
-        if (endDate != null) {
+        com.gl.app.GroupService.entity.Discoverability vis = com.gl.app.GroupService.entity.Discoverability.INVITE_ONLY;
+        if (request.getVisibility() != null) {
+            try { vis = com.gl.app.GroupService.entity.Discoverability.valueOf(request.getVisibility().toUpperCase()); } catch (Exception ignored) {}
+        }
+        group.setVisibility(vis);
+
+        int years = request.getYears() != null ? request.getYears() : 0;
+        int months = request.getMonths() != null ? request.getMonths() : 0;
+        int weeks = request.getWeeks() != null ? request.getWeeks() : 0;
+        int days = request.getDays() != null ? request.getDays() : 0;
+
+        if (years > 0 || months > 0 || weeks > 0 || days > 0) {
+            LocalDateTime endDate = LocalDateTime.now().plusYears(years).plusMonths(months).plusWeeks(weeks).plusDays(days);
             group.setCompetitionStartDate(LocalDateTime.now());
             group.setCompetitionEndDate(endDate);
             group.setCompetitionActive(true);
+            group.setDuration(years + "y " + months + "m " + weeks + "w " + days + "d");
+        } else {
+            group.setDuration("Indefinite");
+            group.setCompetitionActive(false);
         }
 
         group = groupRepository.save(group);
@@ -66,7 +90,21 @@ public class GroupService {
         GroupMember member = new GroupMember(null, group.getId(), userId, LocalDateTime.now(), true);
         groupMemberRepository.save(member);
 
+        // Add invited friends directly
+        if (request.getInviteFriendIds() != null) {
+            for (Long friendId : request.getInviteFriendIds()) {
+                if (!friendId.equals(userId)) {
+                    GroupMember friendMember = new GroupMember(null, group.getId(), friendId, LocalDateTime.now(), false);
+                    groupMemberRepository.save(friendMember);
+                }
+            }
+        }
+
         log.info("Group created with id={} inviteCode={}", group.getId(), group.getInviteCode());
+        
+        // Sync to Meilisearch
+        meilisearchSyncService.syncGroup(group);
+        
         return toResponse(group);
     }
 
@@ -153,6 +191,11 @@ public class GroupService {
         return toResponse(group);
     }
 
+    public boolean hasUserRequested(Long groupId, Long userId) {
+        return groupJoinRequestRepository.findByGroupIdAndStatus(groupId, RequestStatus.PENDING)
+                .stream().anyMatch(r -> r.getApplicantId().equals(userId));
+    }
+
     /**
      * Maps a {@link Group} entity to a {@link GroupResponse} DTO.
      *
@@ -171,6 +214,8 @@ public class GroupService {
                 .map(h -> new GroupHabitResponse(h.getId(), h.getTitle(), h.getDescription()))
                 .collect(Collectors.toList());
 
+        boolean hasPending = groupJoinRequestRepository.findByGroupIdAndStatus(group.getId(), RequestStatus.PENDING).size() > 0;
+
         return new GroupResponse(
                 group.getId(),
                 group.getName(),
@@ -179,6 +224,9 @@ public class GroupService {
                 memberIds,
                 adminIds,
                 habits,
+                group.getVisibility() != null ? group.getVisibility().name() : null,
+                hasPending,
+                false, // currentUserRequested default
                 group.getDescription(),
                 group.getDuration(),
                 group.getCompetitionEndDate()
@@ -215,69 +263,103 @@ public class GroupService {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
 
-        GroupMember member = groupMemberRepository.findByGroupId(groupId).stream()
-                .filter(m -> m.getUserId().equals(userId))
-                .findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Not a member"));
-
-        boolean isRequesterAdmin = member.getIsAdmin() != null && member.getIsAdmin();
-        if (!isRequesterAdmin && !group.getOwnerId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only group admins can change the deadline");
-        }
-
-        if ("SET".equalsIgnoreCase(request.getMode())) {
-            group.setCompetitionEndDate(request.getNewDate());
-        } else {
-            LocalDateTime baseDate = group.getCompetitionEndDate() != null && group.getCompetitionEndDate().isAfter(LocalDateTime.now()) 
-                    ? group.getCompetitionEndDate() 
-                    : LocalDateTime.now();
-
-            int years = request.getYears() != null ? request.getYears() : 0;
-            int months = request.getMonths() != null ? request.getMonths() : 0;
-            int weeks = request.getWeeks() != null ? request.getWeeks() : 0;
-            int days = request.getDays() != null ? request.getDays() : 0;
-
-            if ("REDUCE".equalsIgnoreCase(request.getMode())) {
-                baseDate = baseDate.minusYears(years).minusMonths(months).minusWeeks(weeks).minusDays(days);
-                // Ensure we don't set a date in the past
-                if (baseDate.isBefore(LocalDateTime.now())) {
-                    baseDate = LocalDateTime.now();
-                }
-            } else {
-                baseDate = baseDate.plusYears(years).plusMonths(months).plusWeeks(weeks).plusDays(days);
+        if (!group.getOwnerId().equals(userId)) {
+            // Check if admin
+            boolean isAdmin = groupMemberRepository.findByGroupId(groupId).stream()
+                    .anyMatch(m -> m.getUserId().equals(userId) && Boolean.TRUE.equals(m.getIsAdmin()));
+            if (!isAdmin) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can change deadline");
             }
-            group.setCompetitionEndDate(baseDate);
         }
 
-        group.setCompetitionActive(group.getCompetitionEndDate() != null);
-        groupRepository.save(group);
+        LocalDateTime newDeadline = LocalDateTime.now();
+        if ("ADD".equals(request.getMode())) {
+            newDeadline = group.getCompetitionEndDate() != null ? group.getCompetitionEndDate() : LocalDateTime.now();
+            newDeadline = newDeadline.plusYears(request.getYears() != null ? request.getYears() : 0)
+                                     .plusMonths(request.getMonths() != null ? request.getMonths() : 0)
+                                     .plusWeeks(request.getWeeks() != null ? request.getWeeks() : 0)
+                                     .plusDays(request.getDays() != null ? request.getDays() : 0);
+        } else if ("REDUCE".equals(request.getMode())) {
+            newDeadline = group.getCompetitionEndDate() != null ? group.getCompetitionEndDate() : LocalDateTime.now();
+            newDeadline = newDeadline.minusYears(request.getYears() != null ? request.getYears() : 0)
+                                     .minusMonths(request.getMonths() != null ? request.getMonths() : 0)
+                                     .minusWeeks(request.getWeeks() != null ? request.getWeeks() : 0)
+                                     .minusDays(request.getDays() != null ? request.getDays() : 0);
+        } else if ("SET".equals(request.getMode()) && request.getNewDate() != null) {
+            newDeadline = request.getNewDate();
+        }
 
-        return toResponse(group);
+        group.setCompetitionEndDate(newDeadline);
+        return toResponse(groupRepository.save(group));
     }
 
     /**
-     * Promotes a member to an admin.
+     * Promotes a member to admin.
      */
-    public GroupResponse promoteToAdmin(Long groupId, Long targetUserId, Long requestingUserId) {
+    public GroupResponse promoteToAdmin(Long groupId, Long targetId, Long userId) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
 
-        GroupMember requester = groupMemberRepository.findByGroupId(groupId).stream()
-                .filter(m -> m.getUserId().equals(requestingUserId))
-                .findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Not a member"));
-
-        boolean isRequesterAdmin = requester.getIsAdmin() != null && requester.getIsAdmin();
-        if (!isRequesterAdmin && !group.getOwnerId().equals(requestingUserId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only group admins can promote others");
+        if (!group.getOwnerId().equals(userId)) {
+            // Check if admin
+            boolean isAdmin = groupMemberRepository.findByGroupId(groupId).stream()
+                    .anyMatch(m -> m.getUserId().equals(userId) && Boolean.TRUE.equals(m.getIsAdmin()));
+            if (!isAdmin) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can promote users");
+            }
         }
 
         GroupMember target = groupMemberRepository.findByGroupId(groupId).stream()
-                .filter(m -> m.getUserId().equals(targetUserId))
-                .findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Target user is not a member of this group"));
+                .filter(m -> m.getUserId().equals(targetId))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Target user is not a member"));
 
         target.setIsAdmin(true);
         groupMemberRepository.save(target);
 
         return toResponse(group);
+    }
+
+    /**
+     * Deletes a group entirely (owner only).
+     */
+    public void deleteGroup(Long groupId, Long userId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
+
+        if (!group.getOwnerId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the owner can delete the group");
+        }
+
+        // Delete dependencies
+        groupHabitRepository.deleteAll(groupHabitRepository.findByGroupId(groupId));
+        groupMemberRepository.deleteAll(groupMemberRepository.findByGroupId(groupId));
+        groupJoinRequestRepository.deleteAll(groupJoinRequestRepository.findByGroupId(groupId));
+        directMessageRepository.deleteByGroupId(groupId);
+        
+        // Remove from Meilisearch
+        meilisearchSyncService.deleteGroup(groupId);
+        
+        groupRepository.delete(group);
+    }
+
+    /**
+     * Leaves a group (members only). Owners cannot leave without deleting or transferring ownership.
+     */
+    public void leaveGroup(Long groupId, Long userId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
+
+        if (group.getOwnerId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Owner cannot leave the group. Delete the group instead.");
+        }
+
+        GroupMember member = groupMemberRepository.findByGroupId(groupId).stream()
+                .filter(m -> m.getUserId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "You are not a member of this group"));
+
+        groupMemberRepository.delete(member);
     }
 
     private LocalDateTime calculateEndDate(String duration) {

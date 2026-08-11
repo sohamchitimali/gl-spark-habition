@@ -4,6 +4,7 @@ import com.gl.app.GroupService.entity.GroupMember;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Spring Data repository for {@link GroupMember} entities.
@@ -34,4 +35,6 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
      * @return list of group members
      */
     List<GroupMember> findByUserId(Long userId);
+
+    Optional<GroupMember> findByGroupIdAndUserId(Long groupId, Long userId);
 }

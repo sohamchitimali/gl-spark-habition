@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { getGroup, addHabit, deleteGroupHabit, changeDeadline, promoteToAdmin, type GroupResponse, type GroupHabit } from '../../api/groupApi';
+import { getGroup, addHabit, deleteGroupHabit, changeDeadline, promoteToAdmin, deleteGroup, leaveGroup, type GroupResponse, type GroupHabit } from '../../api/groupApi';
 import { completeHabit, getTasks, createTask, toggleTask, deleteTask, getHabits, createGroupTrackingHabit, getGroupStreak, type HabitTask } from '../../api/habitApi';
 import { getLeaderboard, resetGroupCoins, type LeaderboardEntry } from '../../api/coinApi';
 import { getUsers, type UserProfile } from '../../api/authApi';
@@ -327,7 +327,6 @@ const GroupDashboardPage = () => {
     setResetting(true);
     try {
       await resetGroupCoins(Number(groupId));
-      // Removed loadCoins(); since it's global and not strictly needed here for reset
       loadLeaderboard();
       setShowGroupDetailsModal(false);
       showToast('Group coins have been reset!');
@@ -335,6 +334,28 @@ const GroupDashboardPage = () => {
       showToast('⚠️ Failed to reset coins');
     } finally {
       setResetting(false);
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!groupId || !window.confirm('Are you sure you want to leave this group?')) return;
+    try {
+      await leaveGroup(Number(groupId));
+      navigate('/groups');
+    } catch (err: unknown) {
+      const msg = (err as any)?.response?.data?.message || 'Failed to leave group';
+      showToast(`⚠️ ${msg}`);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!groupId || !window.confirm('WARNING: Are you sure you want to permanently delete this group? All habits, coins, and members will be removed.')) return;
+    try {
+      await deleteGroup(Number(groupId));
+      navigate('/groups');
+    } catch (err: unknown) {
+      const msg = (err as any)?.response?.data?.message || 'Failed to delete group';
+      showToast(`⚠️ ${msg}`);
     }
   };
 
@@ -401,41 +422,62 @@ const GroupDashboardPage = () => {
 
         {/* Header */}
         <div className="mb-8 animate-fade-up">
-          <Link to="/groups" className="text-sm mb-3 inline-flex items-center gap-1 no-underline hover:opacity-80"
-            style={{ color: '#7F77DD' }}>
-            ← Back to Groups
-          </Link>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2">
+          <div className="flex justify-between items-center mb-3">
+            <Link to="/groups" className="text-sm inline-flex items-center gap-1 no-underline hover:opacity-80"
+              style={{ color: '#7F77DD' }}>
+              ← Back to Groups
+            </Link>
+            <Link to={`/chats?group=${groupId}`} className="text-sm px-4 py-1.5 rounded-lg bg-[#534AB7]/20 text-[#7F77DD] hover:bg-[#534AB7]/30 transition-colors flex items-center gap-2">
+              💬 Group Chat
+            </Link>
+          </div>
+          <div className="flex flex-col mt-2">
             <div
-              className="flex items-center gap-4 cursor-pointer group bg-[#2C2C2A] p-4 rounded-2xl border border-[#363634] hover:border-[#5F5E5A] transition-colors flex-1"
+              className="flex items-center gap-4 cursor-pointer group bg-[#2C2C2A] p-4 rounded-2xl border border-[#363634] hover:border-[#5F5E5A] transition-colors w-full relative"
               onClick={() => setShowGroupDetailsModal(true)}
               title="Click to view Group Details and Members"
             >
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-2xl transition-transform group-hover:scale-105"
-                style={{ background: 'linear-gradient(135deg, #534AB7, #D85A30)' }}>
-                {group.name[0].toUpperCase()}
+              <div className="relative flex-shrink-0">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-2xl transition-transform group-hover:scale-105"
+                  style={{ background: 'linear-gradient(135deg, #534AB7, #D85A30)' }}>
+                  {group.name[0].toUpperCase()}
+                </div>
+                {group.hasPendingRequests && isAdmin && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)] border-2 border-[#2C2C2A]" />
+                )}
               </div>
-              <div className="group-hover:opacity-80 transition-opacity flex-1">
-                <h1 className="text-3xl font-bold text-white leading-tight flex items-center gap-2">
+              <div className="group-hover:opacity-80 transition-opacity flex-1 min-w-0 pr-2">
+                <h1 className="text-3xl font-bold text-white leading-tight flex items-center gap-2 truncate">
                   {group.name}
-                  <svg className="w-5 h-5 text-[#7F77DD]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-5 h-5 text-[#7F77DD] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </h1>
-                {group.description && <p className="text-sm mt-1" style={{ color: '#B4B2A9' }}>{group.description}</p>}
-                <p className="text-sm mt-1" style={{ color: '#7F77DD' }}>{today}</p>
+                {group.description && <p className="text-sm mt-1 truncate" style={{ color: '#B4B2A9' }}>{group.description}</p>}
+                <p className="text-sm mt-1 truncate" style={{ color: '#7F77DD' }}>{today}</p>
+              </div>
+
+              {/* Time Left Box Embedded in Title Card */}
+              <div className="flex items-center gap-3 bg-[#1A1A18] rounded-xl p-3 border border-[#363634] ml-auto hidden sm:flex relative flex-shrink-0 group-hover:border-[#5F5E5A] transition-colors">
+                {group.competitionEndDate && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                )}
+                <div className="flex flex-col justify-center text-right pr-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[#B4B2A9] mb-0.5">Time Left</span>
+                  <span className="text-sm font-bold text-white tabular-nums whitespace-nowrap">{timeLeftString}</span>
+                </div>
               </div>
             </div>
 
-            {/* Time Left Box */}
-            <div className="flex items-center gap-3 bg-[#2C2C2A] rounded-2xl p-4 border border-[#363634] md:self-stretch">
-              <div className="flex flex-col justify-center">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#B4B2A9] mb-1">Time Left</span>
-                <span className="text-lg font-bold text-white tabular-nums whitespace-nowrap min-w-[150px] inline-block pr-4">{timeLeftString}</span>
-              </div>
+            {/* Mobile Time Left Box */}
+            <div className="flex sm:hidden items-center justify-between bg-[#2C2C2A] rounded-2xl p-4 border border-[#363634] mt-3 relative">
+              {group.competitionEndDate && (
+                <span className="absolute top-4 right-4 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+              )}
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#B4B2A9]">Time Left</span>
+              <span className="text-sm font-bold text-white tabular-nums mr-4">{timeLeftString}</span>
             </div>
           </div>
-
         </div>
 
         {/* Show spinning coin on complete */}
@@ -466,17 +508,17 @@ const GroupDashboardPage = () => {
           </div>
 
           {/* Coins */}
-          <div className="rounded-2xl p-5 animate-fade-up delay-100"
+          <div className="rounded-2xl p-5 animate-fade-up delay-100 flex flex-col justify-center h-full"
             style={{ background: 'linear-gradient(135deg, #712B13, #993C1D)', border: '1px solid rgba(216,90,48,0.4)' }}>
             <p className="text-sm font-medium mb-1" style={{ color: '#F0997B' }}>My Coins</p>
-            <p className="text-3xl font-bold text-white flex items-center gap-2">
-              {coins !== null ? coins : '—'} <img src={habitionCoin} alt="coin" className="w-8 h-8" />
+            <p className="text-3xl sm:text-4xl font-bold text-white flex items-center gap-2">
+              {coins !== null ? coins : '—'} <img src={habitionCoin} alt="coin" className="w-8 h-8 sm:w-10 sm:h-10" />
             </p>
             <p className="text-xs mt-1" style={{ color: '#F0997B' }}>earned in group</p>
           </div>
 
           {/* Rank */}
-          <div className="rounded-2xl p-5 animate-fade-up delay-200"
+          <div className="rounded-2xl p-5 animate-fade-up delay-200 h-full flex flex-col justify-center"
             style={{ background: '#2C2C2A', border: '1px solid #363634' }}>
             <p className="text-sm font-medium mb-1" style={{ color: '#B4B2A9' }}>My Rank</p>
             <p className="text-3xl font-bold text-white">
@@ -484,22 +526,18 @@ const GroupDashboardPage = () => {
             </p>
             <p className="text-xs mt-1" style={{ color: '#B4B2A9' }}>in this group</p>
           </div>
-
-          {/* Today's habits */}
-          <div className="rounded-2xl p-5 animate-fade-up delay-300"
-            style={{ background: '#2C2C2A', border: '1px solid #363634' }}>
-            <p className="text-sm font-medium mb-1" style={{ color: '#B4B2A9' }}>Today</p>
-            <p className="text-3xl font-bold text-white">
-              {completedCount}<span className="text-lg" style={{ color: '#5F5E5A' }}>/{habits.length}</span>
-            </p>
-            <p className="text-xs mt-1" style={{ color: '#B4B2A9' }}>habits done</p>
-          </div>
         </div>
 
         {/* Group Habits */}
         <div className="mb-8 animate-fade-up delay-200">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">Group Habits</h2>
+            <h2 className="text-lg font-semibold text-white flex items-center gap-3">
+              Group Habits
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full border"
+                style={{ background: 'rgba(83,74,183,0.1)', color: '#AFA9EC', borderColor: 'rgba(83,74,183,0.3)' }}>
+                {completedCount} / {habits.length} Completed
+              </span>
+            </h2>
             {isAdmin && (
               <button
                 onClick={() => setShowCreateModal(true)}
@@ -898,6 +936,20 @@ const GroupDashboardPage = () => {
               <div>
                 <h2 className="text-xl font-bold text-white mb-1">Group Details</h2>
                 <p className="text-sm text-[#B4B2A9]">Invite Code: <span className="font-mono text-white bg-[#1A1A18] px-2 py-1 rounded select-all">{group.inviteCode}</span></p>
+                {isAdmin && (
+                  <Link
+                    to={`/groups/${group.id}/join-requests`}
+                    className="mt-3 inline-flex px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 border border-indigo-500/30 rounded-lg font-semibold transition-colors items-center text-xs relative"
+                  >
+                    {group.hasPendingRequests && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" title="Pending Join Requests" />
+                    )}
+                    <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    View Join Requests
+                  </Link>
+                )}
               </div>
               <button onClick={() => setShowGroupDetailsModal(false)} className="text-[#5F5E5A] hover:text-white">✕</button>
             </div>
@@ -969,13 +1021,31 @@ const GroupDashboardPage = () => {
                   <button
                     onClick={handleResetCoins}
                     disabled={resetting}
-                    className="w-full py-2.5 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
-                    style={{ background: 'rgba(216,90,48,0.2)', color: '#D85A30' }}
+                    className="w-full py-2.5 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 mb-3 bg-[#D85A30]/20 text-[#D85A30] hover:bg-[#D85A30]/30 hover:text-[#D85A30] border border-transparent hover:border-[#D85A30]/30"
                   >
                     {resetting ? 'Resetting...' : 'Reset All Group Coins'}
                   </button>
-                  <p className="text-[10px] text-[#5F5E5A] mt-2 text-center leading-tight">This will permanently delete all coins earned by members in this group and clear the leaderboard.</p>
+                  {isOwner && (
+                    <button
+                      onClick={handleDeleteGroup}
+                      className="w-full py-2.5 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 bg-red-500/20 text-red-500 hover:bg-red-500/30"
+                    >
+                      Delete Group
+                    </button>
+                  )}
+                  <p className="text-[10px] text-[#5F5E5A] mt-2 text-center leading-tight">Actions here are permanent and cannot be undone.</p>
                 </div>
+              </div>
+            )}
+
+            {!isOwner && (
+              <div className="pt-4 border-t border-[#363634]">
+                <button
+                  onClick={handleLeaveGroup}
+                  className="w-full py-3 rounded-xl font-semibold transition-all bg-[#363634] text-[#B4B2A9] hover:bg-red-500/20 hover:text-red-500 hover:border-red-500/30 border border-transparent"
+                >
+                  Leave Group
+                </button>
               </div>
             )}
           </div>

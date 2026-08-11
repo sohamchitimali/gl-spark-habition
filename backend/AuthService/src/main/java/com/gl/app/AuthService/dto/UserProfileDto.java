@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 public class UserProfileDto {
     private Long id;
     private String email;
+    private String username;
     private String name;
     private String preferredColor;
     private String location;

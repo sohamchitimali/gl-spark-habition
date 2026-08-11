@@ -1,17 +1,61 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
+import { checkUsername } from '../../api/authApi';
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 const RegisterPage = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '', confirm: '' });
+  const [form, setForm] = useState({ email: '', password: '', confirm: '', username: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+
+  const debouncedUsername = useDebounce(form.username, 500);
+
+  useEffect(() => {
+    if (!debouncedUsername) {
+      setUsernameStatus('idle');
+      return;
+    }
+    if (debouncedUsername.length < 5) {
+      setUsernameStatus('idle');
+      return;
+    }
+    
+    const verifyUsername = async () => {
+      setUsernameStatus('checking');
+      try {
+        const res = await checkUsername(debouncedUsername);
+        setUsernameStatus(res.data ? 'available' : 'taken');
+      } catch (err) {
+        setUsernameStatus('idle');
+      }
+    };
+    verifyUsername();
+  }, [debouncedUsername]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    if (form.username.length < 5) {
+      setError('Username must be at least 5 characters.');
+      return;
+    }
+    if (usernameStatus === 'taken') {
+      setError('Username is already taken.');
+      return;
+    }
     if (form.password !== form.confirm) {
       setError('Passwords do not match.');
       return;
@@ -20,12 +64,13 @@ const RegisterPage = () => {
       setError('Password must be at least 8 characters.');
       return;
     }
+    
     setLoading(true);
     try {
-      await register({ email: form.email, password: form.password });
+      await register({ email: form.email, password: form.password, username: form.username });
       navigate('/dashboard');
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Registration failed. Email may already be in use.';
+      const msg = err?.response?.data?.message || 'Registration failed. Email or username may already be in use.';
       setError(msg);
     } finally {
       setLoading(false);
@@ -56,6 +101,37 @@ const RegisterPage = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: '#B4B2A9' }}>Username</label>
+              <input
+                id="register-username"
+                type="text"
+                value={form.username}
+                onChange={(e) => {
+                  setForm({ ...form, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') });
+                  if (e.target.value.length >= 5) setUsernameStatus('checking');
+                  else setUsernameStatus('idle');
+                }}
+                placeholder="unique_username"
+                required
+                className="w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 outline-none transition-all"
+                style={{ 
+                  background: '#363634', 
+                  border: `1px solid ${usernameStatus === 'available' ? '#4CAF50' : usernameStatus === 'taken' ? '#D85A30' : '#424240'}` 
+                }}
+                onFocus={(e) => { if (usernameStatus === 'idle') e.target.style.borderColor = '#534AB7'; }}
+                onBlur={(e) => { if (usernameStatus === 'idle') e.target.style.borderColor = '#424240'; }}
+              />
+              <div className="mt-1 flex justify-between items-center text-xs">
+                <span style={{ color: '#F0997B' }}>⚠️ Cannot be changed later</span>
+                <span>
+                  {usernameStatus === 'checking' && <span style={{ color: '#B4B2A9' }}>Checking...</span>}
+                  {usernameStatus === 'available' && <span style={{ color: '#4CAF50' }}>Available!</span>}
+                  {usernameStatus === 'taken' && <span style={{ color: '#D85A30' }}>Taken</span>}
+                </span>
+              </div>
+            </div>
+
+            <div>
               <label className="block text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Email</label>
               <input
                 id="register-email"
@@ -70,6 +146,7 @@ const RegisterPage = () => {
                 onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
               />
             </div>
+            
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Password</label>
               <input
@@ -85,6 +162,7 @@ const RegisterPage = () => {
                 onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
               />
             </div>
+            
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Confirm password</label>
               <input
@@ -100,20 +178,20 @@ const RegisterPage = () => {
                 onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
               />
             </div>
+
             <button
-              id="register-submit"
               type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-xl font-semibold text-white transition-all hover:opacity-90 active:scale-95 mt-2"
-              style={{ background: loading ? '#424240' : 'linear-gradient(135deg, #D85A30, #993C1D)' }}
+              disabled={loading || usernameStatus === 'checking' || usernameStatus === 'taken'}
+              className="w-full py-3 rounded-xl text-white font-medium transition-all disabled:opacity-50 mt-6"
+              style={{ background: 'linear-gradient(135deg, #7F77DD, #534AB7)' }}
             >
-              {loading ? 'Creating account…' : 'Create account'}
+              {loading ? 'Creating account...' : 'Create account'}
             </button>
           </form>
 
-          <p className="text-center mt-6 text-sm" style={{ color: '#B4B2A9' }}>
+          <p className="mt-6 text-center text-sm" style={{ color: '#B4B2A9' }}>
             Already have an account?{' '}
-            <Link to="/login" className="font-medium hover:underline" style={{ color: '#7F77DD' }}>
+            <Link to="/login" className="text-white hover:underline transition-all hover:text-[#7F77DD]">
               Sign in
             </Link>
           </p>
