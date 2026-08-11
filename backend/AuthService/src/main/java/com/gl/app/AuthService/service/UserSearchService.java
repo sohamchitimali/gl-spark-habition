@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import jakarta.annotation.PostConstruct;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,11 +36,16 @@ public class UserSearchService {
     private UserService userService;
 
     @PostConstruct
-    public void init() throws Exception {
-        this.client = new Client(new Config(meiliHost, meiliApiKey));
-        this.userIndex = client.index("users");
+    public void init() {
+        try {
+            this.client = new Client(new Config(meiliHost, meiliApiKey));
+            this.userIndex = client.index("users");
+        } catch (Exception e) {
+            System.err.println("Warning: Meilisearch index not available during startup in UserSearchService.");
+        }
     }
 
+    @CircuitBreaker(name = "meilisearch", fallbackMethod = "fallbackSearchUsers")
     public List<ProfileDto> searchUsers(String query, List<String> userTags, Double userLat, Double userLng) {
         try {
             // 1. Search Meilisearch (Basic Text + Tag Matching)
@@ -78,9 +84,31 @@ public class UserSearchService {
             return profiles;
 
         } catch (Exception e) {
-            System.err.println("User search failed: " + e.getMessage());
-            return Collections.emptyList();
+            throw new RuntimeException("Meilisearch failed, triggering fallback", e);
         }
+    }
+
+    public List<ProfileDto> fallbackSearchUsers(String query, List<String> userTags, Double userLat, Double userLng, Throwable t) {
+        System.err.println("Circuit Breaker triggered. Using fallback SQL search for users. Reason: " + t.getMessage());
+        
+        // 1. Fetch from Postgres using LIKE
+        List<User> users = userRepository.findByUsernameContainingIgnoreCaseOrProfile_NameContainingIgnoreCase(query, query);
+
+        if (users.isEmpty()) return Collections.emptyList();
+
+        // Fetch ProfileDtos for all users
+        List<ProfileDto> profiles = users.stream()
+                .map(u -> userService.getProfile(u.getId()))
+                .collect(Collectors.toList());
+
+        // 2. Exact same Jaccard Similarity + Geo Re-Ranking
+        profiles.sort((p1, p2) -> {
+            double score1 = calculateScore(p1, userTags, userLat, userLng);
+            double score2 = calculateScore(p2, userTags, userLat, userLng);
+            return Double.compare(score2, score1); // Descending
+        });
+
+        return profiles;
     }
 
     private double calculateScore(ProfileDto profile, List<String> userTags, Double userLat, Double userLng) {

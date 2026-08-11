@@ -18,4 +18,5 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
      */
     Optional<Group> findByInviteCode(String inviteCode);
     java.util.List<Group> findByOwnerId(Long ownerId);
+    java.util.List<Group> findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String name, String description);
 }

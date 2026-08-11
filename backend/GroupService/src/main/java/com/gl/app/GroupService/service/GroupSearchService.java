@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import jakarta.annotation.PostConstruct;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -30,11 +31,16 @@ public class GroupSearchService {
     private GroupRepository groupRepository;
 
     @PostConstruct
-    public void init() throws Exception {
-        this.client = new Client(new com.meilisearch.sdk.Config(meiliHost, meiliApiKey));
-        this.groupIndex = client.getIndex("groups");
+    public void init() {
+        try {
+            this.client = new Client(new com.meilisearch.sdk.Config(meiliHost, meiliApiKey));
+            this.groupIndex = client.getIndex("groups");
+        } catch (Exception e) {
+            System.err.println("Warning: Meilisearch index not available during startup in GroupSearchService.");
+        }
     }
 
+    @CircuitBreaker(name = "meilisearch", fallbackMethod = "fallbackSearchGroups")
     public List<Group> searchGroups(String query, List<String> userTags, Double userLat, Double userLng) {
         try {
             // 1. Initial Meilisearch query to get keyword matches
@@ -64,9 +70,31 @@ public class GroupSearchService {
             return groups;
 
         } catch (Exception e) {
-            System.err.println("Search failed: " + e.getMessage());
-            return Collections.emptyList();
+            throw new RuntimeException("Meilisearch failed, triggering fallback", e);
         }
+    }
+
+    public List<Group> fallbackSearchGroups(String query, List<String> userTags, Double userLat, Double userLng, Throwable t) {
+        System.err.println("Circuit Breaker triggered. Using fallback SQL search for groups. Reason: " + t.getMessage());
+        
+        // 1. Fetch from Postgres using LIKE
+        List<Group> groups = groupRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(query, query);
+        
+        // Filter for PUBLIC/OPEN only
+        groups = groups.stream()
+                .filter(g -> "PUBLIC".equals(g.getVisibility().name()) || "OPEN".equals(g.getVisibility().name()))
+                .collect(Collectors.toList());
+
+        if (groups.isEmpty()) return Collections.emptyList();
+
+        // 2. Exact same Jaccard Similarity + Geo + Popularity Re-Ranking
+        groups.sort((g1, g2) -> {
+            double score1 = calculateScore(g1, userTags, userLat, userLng);
+            double score2 = calculateScore(g2, userTags, userLat, userLng);
+            return Double.compare(score2, score1); // Descending
+        });
+
+        return groups;
     }
 
     private double calculateScore(Group group, List<String> userTags, Double userLat, Double userLng) {

@@ -9,4 +9,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     Optional<User> findByUsername(String username);
     Optional<User> findByRefreshToken(String refreshToken);
+    java.util.List<User> findByUsernameContainingIgnoreCaseOrProfile_NameContainingIgnoreCase(String username, String name);
 }

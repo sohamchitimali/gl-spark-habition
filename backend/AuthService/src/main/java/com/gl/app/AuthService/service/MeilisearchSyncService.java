@@ -37,19 +37,22 @@ public class MeilisearchSyncService {
     private ObjectMapper objectMapper;
 
     @PostConstruct
-    public void init() throws Exception {
-        this.client = new Client(new Config(meiliHost, meiliApiKey));
-        
+    public void init() {
         try {
-            this.userIndex = client.getIndex("users");
+            this.client = new Client(new Config(meiliHost, meiliApiKey));
+            try {
+                this.userIndex = client.getIndex("users");
+            } catch (Exception e) {
+                // Index doesn't exist, create it
+                client.createIndex("users", "id");
+                this.userIndex = client.index("users");
+                
+                // Configure searchable and filterable attributes
+                userIndex.updateSearchableAttributesSettings(new String[]{"username", "name", "bio", "tags", "addressDisplay"});
+                userIndex.updateFilterableAttributesSettings(new String[]{"tags", "locationVisibility"});
+            }
         } catch (Exception e) {
-            // Index doesn't exist, create it
-            client.createIndex("users", "id");
-            this.userIndex = client.index("users");
-            
-            // Configure searchable and filterable attributes
-            userIndex.updateSearchableAttributesSettings(new String[]{"username", "name", "bio", "tags", "addressDisplay"});
-            userIndex.updateFilterableAttributesSettings(new String[]{"tags", "locationVisibility"});
+            System.err.println("Warning: Meilisearch could not be initialized during startup. Fallback search will be used. Error: " + e.getMessage());
         }
     }
 
