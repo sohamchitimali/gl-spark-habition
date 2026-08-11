@@ -29,10 +29,23 @@ Habition is a gamified, social habit-tracking application designed to help users
 
 ## Getting Started
 
-1. **Start Meilisearch**:
-   Ensure Meilisearch is running locally on port 7700.
+1. **Setup Meilisearch**:
+   Download and start Meilisearch locally. We have provided setup scripts that will automatically download the correct executable for your operating system into a `meilisearch/` folder.
+
+   **Windows**:
    ```bash
-   ./meilisearch.exe --master-key <YOUR_MASTER_KEY>
+   .\setup-meilisearch.bat
+   ```
+   **Mac/Linux**:
+   ```bash
+   chmod +x setup-meilisearch.sh
+   ./setup-meilisearch.sh
+   ```
+
+   Then, open a terminal in the new `meilisearch` directory and start it with the master key:
+   ```bash
+   cd meilisearch
+   ./meilisearch --master-key SBRmZ0tKs_Y1i3gQgH1aIZ6YI0LRojaqjSCI2yjUD-8
    ```
 
 2. **Run Backend Services**:
