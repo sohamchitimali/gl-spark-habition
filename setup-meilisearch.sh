@@ -12,8 +12,8 @@ echo "Downloading Meilisearch..."
 # Detect OS
 OS="$(uname -s)"
 case "${OS}" in
-    Linux*)     URL="https://github.com/meilisearch/meilisearch/releases/download/v1.12.0/meilisearch-linux-amd64";;
-    Darwin*)    URL="https://github.com/meilisearch/meilisearch/releases/download/v1.12.0/meilisearch-macos-amd64";;
+    Linux*)     URL="https://github.com/meilisearch/meilisearch/releases/download/v1.53.1/meilisearch-linux-amd64";;
+    Darwin*)    URL="https://github.com/meilisearch/meilisearch/releases/download/v1.53.1/meilisearch-macos-amd64";;
     *)          echo "Unsupported OS for automatic download. Please download manually."; exit 1;;
 esac
 

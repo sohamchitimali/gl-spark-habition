@@ -22,4 +22,5 @@ public class CreateGroupRequest {
     private Integer days;
     
     private java.util.List<Long> inviteFriendIds;
+    private Boolean notificationsEnabled;
 }

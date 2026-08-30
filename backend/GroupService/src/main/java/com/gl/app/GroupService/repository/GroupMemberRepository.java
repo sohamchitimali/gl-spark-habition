@@ -37,4 +37,12 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
     List<GroupMember> findByUserId(Long userId);
 
     Optional<GroupMember> findByGroupIdAndUserId(Long groupId, Long userId);
+
+    /**
+     * Retrieves members of a group ordered by total coins descending (for leaderboard).
+     *
+     * @param groupId the group ID
+     * @return list of group members
+     */
+    List<GroupMember> findAllByGroupIdOrderByTotalCoinsDesc(Long groupId);
 }

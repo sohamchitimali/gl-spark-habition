@@ -13,6 +13,8 @@ axiosInstance.interceptors.request.use((config) => {
   if (token) {
     config.headers['Authorization'] = `Bearer ${token}`;
   }
+  // Inject the user's local timezone for backend date resolution
+  config.headers['X-Timezone'] = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return config;
 });
 

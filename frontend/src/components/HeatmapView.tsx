@@ -6,6 +6,10 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const DAYS_OF_WEEK = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const TRAILING_MONTH_COUNT = 12;
 
+const toLocalISOString = (date: Date): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 interface HeatmapViewProps {
   heatmapData: Map<string, number>;
   title: string;
@@ -13,11 +17,16 @@ interface HeatmapViewProps {
 
 const getHeatColor = (percentage: number): string => {
   if (percentage <= 0) return '#2C2C2A';
-  if (percentage <= 20) return '#3B4D2B';
-  if (percentage <= 40) return '#4A7C3F';
-  if (percentage <= 60) return '#5A9E50';
-  if (percentage <= 80) return '#6FCF5B';
-  return '#86E971'; // 100%
+  if (percentage <= 10) return '#333E2B';
+  if (percentage <= 20) return '#39512C';
+  if (percentage <= 30) return '#40642E';
+  if (percentage <= 40) return '#46772F';
+  if (percentage <= 50) return '#4D8A31';
+  if (percentage <= 60) return '#539D32';
+  if (percentage <= 70) return '#5AB034';
+  if (percentage <= 80) return '#61C335';
+  if (percentage <= 90) return '#67D637';
+  return '#6EE938'; // 91-100%
 };
 
 const buildGridForMonth = (year: number, month: number): (Date | null)[] => {
@@ -59,7 +68,7 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ heatmapData, title }) => {
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     let completed = 0;
     for (let d = 1; d <= daysInMonth; d++) {
-      const key = new Date(currentYear, currentMonth, d).toISOString().split('T')[0];
+      const key = toLocalISOString(new Date(currentYear, currentMonth, d));
       if ((heatmapData.get(key) ?? 0) > 0) completed++;
     }
     setStats({
@@ -78,7 +87,7 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ heatmapData, title }) => {
       for (let i = 0; i < 365; i++) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
-        const key = date.toISOString().split('T')[0];
+        const key = toLocalISOString(date);
         if ((heatmapData.get(key) ?? 0) > 0) active++;
         total++;
       }
@@ -90,7 +99,7 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ heatmapData, title }) => {
       for (let m = 0; m < 12; m++) {
         const daysInMonth = new Date(selectedYear, m + 1, 0).getDate();
         for (let d = 1; d <= daysInMonth; d++) {
-          const key = new Date(selectedYear, m, d).toISOString().split('T')[0];
+          const key = toLocalISOString(new Date(selectedYear, m, d));
           if ((heatmapData.get(key) ?? 0) > 0) active++;
         }
       }
@@ -110,7 +119,7 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ heatmapData, title }) => {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     let active = 0;
     for (let d = 1; d <= daysInMonth; d++) {
-      const key = new Date(year, month, d).toISOString().split('T')[0];
+      const key = toLocalISOString(new Date(year, month, d));
       if ((heatmapData.get(key) ?? 0) > 0) active++;
     }
     return active;
@@ -129,7 +138,7 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ heatmapData, title }) => {
   }
 
   return (
-    <div className={`mx-auto ${view === 'yearly' ? 'max-w-6xl' : 'max-w-2xl'}`}>
+    <div className={`mx-auto ${view === 'yearly' ? 'max-w-6xl' : 'max-w-2xl'} px-4 md:px-6`}>
       <div className="animate-fade-up">
         <div className="mb-6 flex justify-between items-end">
           <div>
@@ -179,11 +188,11 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ heatmapData, title }) => {
               <div className="grid grid-cols-7 gap-2">
                 {monthCells.map((date, i) => {
                   if (!date) return <div key={i} className="aspect-square" />; // Added aspect-square to fix structural issue
-                  const key = date.toISOString().split('T')[0];
+                  const key = toLocalISOString(date);
                   const percentage = heatmapData.get(key) ?? 0;
                   const isToday = date && date.toDateString() === today.toDateString();
                   return (
-                    <div key={i} title={`${key}: ${percentage}% tasks completed`}
+                    <div key={i} title={`${key}: ${percentage}% completed`}
                       className="aspect-square rounded-lg transition-all hover:scale-110 cursor-pointer"
                       style={{
                         background: getHeatColor(percentage),
@@ -219,11 +228,11 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ heatmapData, title }) => {
                       <div className="grid grid-cols-7 gap-[3px]">
                         {cells.map((date, i) => {
                           if (!date) return <div key={i} className="aspect-square" />;
-                          const key = date.toISOString().split('T')[0];
+                          const key = toLocalISOString(date);
                           const percentage = heatmapData.get(key) ?? 0;
                           const isToday = date && date.toDateString() === today.toDateString();
                           return (
-                            <div key={i} title={`${key}: ${percentage}% tasks completed`}
+                            <div key={i} title={`${key}: ${percentage}% completed`}
                               className="aspect-square rounded-[3px] transition-all hover:scale-125 cursor-pointer"
                               style={{
                                 background: getHeatColor(percentage),
@@ -240,15 +249,20 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ heatmapData, title }) => {
             </div>
           )}
 
-          <div className="flex items-center gap-2 mt-5">
-            <span className="text-xs" style={{ color: '#5F5E5A' }}>0%</span>
-            <div className="w-3 h-3 rounded-sm" style={{ background: getHeatColor(0) }} title="0%" />
-            <div className="w-3 h-3 rounded-sm" style={{ background: getHeatColor(20) }} title="1-20%" />
-            <div className="w-3 h-3 rounded-sm" style={{ background: getHeatColor(40) }} title="21-40%" />
-            <div className="w-3 h-3 rounded-sm" style={{ background: getHeatColor(60) }} title="41-60%" />
-            <div className="w-3 h-3 rounded-sm" style={{ background: getHeatColor(80) }} title="61-80%" />
-            <div className="w-3 h-3 rounded-sm" style={{ background: getHeatColor(100) }} title="81-100%" />
-            <span className="text-xs" style={{ color: '#5F5E5A' }}>100%</span>
+          <div className="flex items-center gap-1 mt-5 overflow-x-auto pb-2">
+            <span className="text-xs mr-1" style={{ color: '#5F5E5A' }}>0%</span>
+            <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: getHeatColor(0) }} title="0%" />
+            <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: getHeatColor(10) }} title="10%" />
+            <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: getHeatColor(20) }} title="20%" />
+            <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: getHeatColor(30) }} title="30%" />
+            <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: getHeatColor(40) }} title="40%" />
+            <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: getHeatColor(50) }} title="50%" />
+            <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: getHeatColor(60) }} title="60%" />
+            <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: getHeatColor(70) }} title="70%" />
+            <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: getHeatColor(80) }} title="80%" />
+            <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: getHeatColor(90) }} title="90%" />
+            <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: getHeatColor(100) }} title="100%" />
+            <span className="text-xs ml-1" style={{ color: '#5F5E5A' }}>100%</span>
           </div>
         </div>
 
@@ -258,14 +272,14 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({ heatmapData, title }) => {
               {view === 'monthly' ? `${stats.daysCompleted}/${stats.totalDays}` : `${yearStats.activeDays}/${yearStats.totalDays}`}
             </p>
             <p className="text-xs mt-1" style={{ color: '#B4B2A9' }}>
-              {view === 'monthly' ? 'days completed' : 'active days'}
+              active days
             </p>
           </div>
           <div className="rounded-2xl p-5 text-center" style={{ background: '#2C2C2A', border: '1px solid #363634' }}>
             <p className="text-2xl font-bold text-white">
               {view === 'monthly' ? stats.consistency : yearStats.consistency}%
             </p>
-            <p className="text-xs mt-1" style={{ color: '#B4B2A9' }}>consistency</p>
+            <p className="text-xs mt-1" style={{ color: '#B4B2A9' }}>activity</p>
           </div>
         </div>
       </div>

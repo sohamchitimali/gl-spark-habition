@@ -155,7 +155,7 @@ const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, onUpdate }) => {
                     {friends.map(f => (
                       <div key={f.id} className="flex items-center justify-between p-3 rounded-xl group transition-colors hover:bg-[#363634]" style={{ background: '#2C2C2A' }}>
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-md shrink-0" style={{ background: f.friendProfile.preferredColor || '#534AB7' }}>
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-md shrink-0" style={{ background: f.friendProfile.userTheme || '#534AB7' }}>
                             {(f.friendProfile.name || f.friendProfile.username || '?').charAt(0).toUpperCase()}
                           </div>
                           <div>

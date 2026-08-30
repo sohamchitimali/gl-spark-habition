@@ -4,12 +4,14 @@ interface LoadingProps {
   size?: number; // Size of each individual tile in px (default: 16)
   activeColor?: string;
   idleColor?: string;
+  padding?: string;
 }
 
 const Loading: React.FC<LoadingProps> = ({ 
   size = 16, 
   activeColor = '#534AB7', // Brand purple
-  idleColor = '#2C2C2A'    // Dark card background
+  idleColor = '#2C2C2A',   // Dark card background
+  padding = '1rem 0'
 }) => {
   const [current, setCurrent] = useState(0);
 
@@ -24,7 +26,7 @@ const Loading: React.FC<LoadingProps> = ({
   const radius = Math.max(2, Math.floor(size / 5));
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', padding: '1rem 0' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', padding }}>
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: `repeat(3, ${size}px)`, 

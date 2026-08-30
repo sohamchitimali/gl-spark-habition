@@ -110,6 +110,19 @@
   }
 }
 
+@keyframes border-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0px rgba(216, 90, 48, 0);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(216, 90, 48, 0.8);
+  }
+}
+
+.animate-border-pulse {
+  animation: border-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 .animate-fade-up {
   animation: fadeInUp 0.4s ease both;
 }
@@ -199,4 +212,19 @@
   left: 50%;
   transform-origin: 50% 50%;
   backface-visibility: hidden;
+}
+
+@keyframes orangePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.9);
+    border-color: rgba(249, 115, 22, 1);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.35);
+    border-color: rgba(249, 115, 22, 1);
+  }
+  100% {
+    box-shadow: 0 0 0 8px rgba(249, 115, 22, 0);
+    border-color: rgba(249, 115, 22, 0.7);
+  }
 }

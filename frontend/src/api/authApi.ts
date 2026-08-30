@@ -1,13 +1,13 @@
 import axiosInstance from './axiosConfig';
 import axios from 'axios';
 
-export interface AuthRequest { email: string; password: string; username?: string; }
+export interface AuthRequest { email: string; password: string; username?: string; otp?: string; }
 export interface AuthResponse { accessToken: string; refreshToken: string; userId: number; }
-export interface UserProfile { id: number; email: string; username?: string; name?: string; preferredColor?: string; addressDisplay?: string; bio?: string; }
+export interface UserProfile { id: number; email: string; username?: string; name?: string; userTheme?: string; addressDisplay?: string; bio?: string; }
 export interface Profile { 
   username?: string;
   name?: string; 
-  preferredColor?: string; 
+  userTheme?: string; 
   addressDisplay?: string; 
   latitude?: number;
   longitude?: number;
@@ -17,13 +17,22 @@ export interface Profile {
   schedule?: string;
   locationVisibility?: string;
   tags?: string[];
+  autoTimezone?: boolean;
 }
+
+export const sendOtp = (email: string) =>
+  axios.post('http://localhost:8080/auth/send-otp', { email });
 
 export const register = (data: AuthRequest) =>
   axiosInstance.post<AuthResponse>('/auth/register', data);
 
-export const checkUsername = (username: string) =>
-  axios.get<boolean>(`http://localhost:8080/auth/check-username?username=${encodeURIComponent(username)}`);
+export const checkUsername = (username: string, sessionId?: string) => {
+  let url = `http://localhost:8080/auth/check-username?username=${encodeURIComponent(username)}`;
+  if (sessionId) {
+    url += `&sessionId=${encodeURIComponent(sessionId)}`;
+  }
+  return axios.get<boolean>(url);
+};
 
 export const login = (data: AuthRequest) =>
   axiosInstance.post<AuthResponse>('/auth/login', data);
@@ -53,3 +62,13 @@ export const getFriendships = () => axiosInstance.get<FriendshipDto[]>('/auth/fr
 export const sendFriendRequest = (username: string) => axiosInstance.post<FriendshipDto>(`/auth/friends/request/${encodeURIComponent(username)}`);
 export const acceptFriendRequest = (friendshipId: number) => axiosInstance.put<FriendshipDto>(`/auth/friends/accept/${friendshipId}`);
 export const removeFriend = (friendshipId: number) => axiosInstance.delete(`/auth/friends/${friendshipId}`);
+
+// Password Management
+export const forgotPassword = (email: string) =>
+  axios.post('http://localhost:8080/auth/forgot-password', { email });
+
+export const resetPassword = (email: string, otp: string, newPassword: string) =>
+  axios.post('http://localhost:8080/auth/reset-password', { email, otp, newPassword });
+
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  axiosInstance.put('/auth/users/me/password', { currentPassword, newPassword });

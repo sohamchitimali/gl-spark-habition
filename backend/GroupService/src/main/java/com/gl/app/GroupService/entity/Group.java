@@ -61,6 +61,32 @@ public class Group {
     
     private Integer memberCount = 0;
     
+    @Column(name = "notifications_enabled", nullable = false, columnDefinition = "boolean default true")
+    private Boolean notificationsEnabled = true;
+
+    @Column(name = "canonical_day_anchor_timezone", nullable = false)
+    private String canonicalDayAnchorTimezone;
+
+    @Column(name = "consistency_score")
+    private Double consistencyScore;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "current_global_habit_group_streak")
+    private Integer currentGlobalHabitGroupStreak;
+
+    @Column(name = "highest_habit_group_streak")
+    private Integer highestHabitGroupStreak;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        if (canonicalDayAnchorTimezone == null) {
+            canonicalDayAnchorTimezone = "UTC";
+        }
+    }
+    
     @ManyToMany
     @JoinTable(
         name = "group_tags",

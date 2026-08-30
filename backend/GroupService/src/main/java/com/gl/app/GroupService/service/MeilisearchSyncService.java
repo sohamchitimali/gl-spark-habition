@@ -88,6 +88,7 @@ public class MeilisearchSyncService {
 
     // Hourly Cron Job to ensure resilience
     @Scheduled(cron = "0 0 * * * *")
+    @org.springframework.transaction.annotation.Transactional
     public void fullSync() {
         System.out.println("Starting full Meilisearch sync...");
         List<Group> allGroups = groupRepository.findAll();

@@ -24,6 +24,11 @@ public interface HabitCompletionRepository extends JpaRepository<HabitCompletion
     boolean existsByHabitIdAndUserIdAndCompletionDate(Long habitId, Long userId, LocalDate completionDate);
 
     /**
+     * Returns all habit completions for a user on a given date.
+     */
+    List<HabitCompletion> findByUserIdAndCompletionDate(Long userId, LocalDate completionDate);
+
+    /**
      * Returns all distinct completion dates for a user, ordered descending.
      * Used for streak and heatmap calculations.
      *

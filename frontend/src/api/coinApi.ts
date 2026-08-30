@@ -1,6 +1,6 @@
 import axiosInstance from './axiosConfig';
 
-export interface LeaderboardEntry { rank: number; userId: number; totalCoins: number; }
+export interface LeaderboardEntry { rank: number; previousRank?: number; userId: number; totalCoins: number; }
 export interface LeaderboardResponse { groupId: number; entries: LeaderboardEntry[]; winnerId: number | null; }
 
 export const getLeaderboard = (groupId: number) =>

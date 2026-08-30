@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
+import Loading from '../../components/Loading';
 import habitionCoin from '../../assets/habition_coin.png';
+import habitionLogoGreen from '../../assets/habition_logo_green.svg';
+import { ConsistencyCascade } from '../../components/ConsistencyCascade';
 
 const LoginPage = () => {
   const { login } = useAuth();
@@ -25,14 +28,14 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'linear-gradient(135deg, #1a1a18 0%, #26215C 100%)' }}>
+    <div className="min-h-screen flex relative" style={{ background: 'linear-gradient(135deg, #1a1a18 0%, #26215C 100%)' }}>
+      <ConsistencyCascade />
       {/* Left Panel */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-16">
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-16 relative z-10">
         <div className="animate-fade-up">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-lg"
-              style={{ background: 'linear-gradient(135deg, #7F77DD, #D85A30)' }}>H</div>
-            <span className="text-2xl font-bold text-white">habition</span>
+          <div className="flex items-center gap-2 mb-8">
+            <img src={habitionLogoGreen} alt="Habition Logo" className="w-10 h-10" />
+            <span className="text-2xl font-bold text-white tracking-wide">habition</span>
           </div>
           <h1 className="text-5xl font-bold text-white leading-tight mb-6">
             Build habits.<br />
@@ -54,9 +57,15 @@ const LoginPage = () => {
       </div>
 
       {/* Right Panel — Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative z-10">
         <div className="w-full max-w-md animate-fade-up delay-100">
           <div className="rounded-2xl p-8" style={{ background: '#2C2C2A', border: '1px solid #363634' }}>
+            {/* Mobile Banner */}
+            <div className="flex items-center justify-center gap-2 mb-8 lg:hidden">
+              <img src={habitionLogoGreen} alt="Habition Logo" className="w-10 h-10" />
+              <span className="text-2xl font-bold text-white tracking-wide">habition</span>
+            </div>
+
             <h2 className="text-2xl font-bold text-white mb-2">Welcome back</h2>
             <p style={{ color: '#B4B2A9' }} className="mb-8 text-sm">Sign in to your account</p>
 
@@ -83,7 +92,12 @@ const LoginPage = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Password</label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-medium" style={{ color: '#B4B2A9' }}>Password</label>
+                  <Link to="/forgot-password" className="text-sm font-medium hover:underline" style={{ color: '#7F77DD' }}>
+                    Forgot Password?
+                  </Link>
+                </div>
                 <input
                   id="login-password"
                   type="password"
@@ -104,7 +118,7 @@ const LoginPage = () => {
                 className="w-full py-3 rounded-xl font-semibold text-white transition-all hover:opacity-90 active:scale-95 mt-2"
                 style={{ background: loading ? '#424240' : 'linear-gradient(135deg, #534AB7, #3C3489)' }}
               >
-                {loading ? 'Signing in…' : 'Sign in'}
+                {loading ? <Loading size={5} padding="0" idleColor="transparent" activeColor="#FFF" /> : 'Sign in'}
               </button>
             </form>
 

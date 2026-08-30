@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../auth/AuthContext';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getMyMessages, sendMessage, markAsRead, type DirectMessage } from '../../api/chatApi';
 import { getUsers, getFriendships, type UserProfile, type FriendshipDto } from '../../api/authApi';
-import { getMyGroups, type GroupResponse, getPendingRequests, approveRequest, rejectRequest } from '../../api/groupApi';
+import { getMyGroups, type GroupResponse, getPendingRequests, approveRequest, rejectRequest, blockRequester } from '../../api/groupApi';
 import { useSearchParams } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Loading from '../../components/Loading';
+import { useConfirm } from '../../context/ConfirmContext';
 
 interface Conversation {
   id: string; // 'user_123' or 'group_456'
@@ -16,7 +18,7 @@ interface Conversation {
   messages: DirectMessage[];
   unreadCount: number;
   lastMessageAt: number;
-  
+
   // Payload for action buttons
   otherUserId?: number; // if user chat
   groupId?: number; // if group chat
@@ -27,6 +29,9 @@ interface Conversation {
 
 const ChatsPage = () => {
   const { userId } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { confirm } = useConfirm();
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvoId, setActiveConvoId] = useState<string | null>(null);
@@ -34,6 +39,41 @@ const ChatsPage = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Resizer state
+  const [sidebarWidth, setSidebarWidth] = useState(384);
+  const isDragging = useRef(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      // 16px is container padding. Max width leaves at least 400px for chat window
+      const newWidth = Math.max(250, Math.min(e.clientX - 16, window.innerWidth - 400));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDragging.current) return;
+      const newWidth = Math.max(250, Math.min(e.touches[0].clientX - 16, window.innerWidth - 400));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchend', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleMouseUp);
+    };
+  }, []);
 
   // Preselect from URL parameters
   useEffect(() => {
@@ -61,7 +101,7 @@ const ChatsPage = () => {
           getMyGroups(),
           getFriendships()
         ]);
-        
+
         const myGroups = groupsRes.data;
         const myFriends = friendsRes.data.filter(f => f.status === 'ACCEPTED');
         const msgs = msgRes.data;
@@ -69,7 +109,7 @@ const ChatsPage = () => {
         // Group messages into buckets
         // bucket key: 'group_123' or 'user_456'
         const buckets = new Map<string, DirectMessage[]>();
-        
+
         msgs.forEach(msg => {
           if (msg.chatType === 'GROUP' && msg.groupId) {
             const key = `group_${msg.groupId}`;
@@ -128,7 +168,7 @@ const ChatsPage = () => {
             const user = userMap.get(uid);
             if (user) {
               const isFriend = myFriends.some(f => f.friendProfile.username === user.username);
-              
+
               // Check if join request context
               let pendingRequestId;
               let pendingGroupId;
@@ -136,14 +176,14 @@ const ChatsPage = () => {
               if (joinReqMsg && joinReqMsg.groupId) {
                 const group = myGroups.find(g => g.id === joinReqMsg.groupId);
                 if (group && group.ownerId === userId) {
-                   try {
-                     const reqsRes = await getPendingRequests(joinReqMsg.groupId);
-                     const matchingReq = reqsRes.data.find((r: any) => r.applicantId === uid);
-                     if (matchingReq) {
-                       pendingRequestId = matchingReq.id;
-                       pendingGroupId = joinReqMsg.groupId;
-                     }
-                   } catch (e) {}
+                  try {
+                    const reqsRes = await getPendingRequests(joinReqMsg.groupId);
+                    const matchingReq = reqsRes.data.find((r: any) => r.applicantId === uid);
+                    if (matchingReq) {
+                      pendingRequestId = matchingReq.id;
+                      pendingGroupId = joinReqMsg.groupId;
+                    }
+                  } catch (e) { }
                 }
               }
 
@@ -152,7 +192,7 @@ const ChatsPage = () => {
                 type: isFriend ? 'FRIEND' : 'STRANGER',
                 name: user.name || user.username || 'Unknown',
                 avatarText: (user.name || user.username || '?').charAt(0).toUpperCase(),
-                avatarColor: user.preferredColor || '#424240',
+                avatarColor: user.userTheme || '#534AB7',
                 messages: bMsgs,
                 unreadCount,
                 lastMessageAt,
@@ -183,46 +223,58 @@ const ChatsPage = () => {
           }
         });
 
-        // Add users we have no messages with yet, ONLY if URL requested it
         const userParam = searchParams.get('user');
-        if (userParam && !formattedConvos.some(c => c.otherUsername === userParam)) {
+        const reqIdParam = searchParams.get('requestId');
+        const grpIdParam = searchParams.get('groupId');
+        if (userParam) {
+          let targetConvo = formattedConvos.find(c => c.otherUsername === userParam);
+
+          if (!targetConvo) {
             // Find friend
             const friend = myFriends.find(f => f.friendProfile.username === userParam);
             if (friend) {
-                formattedConvos.push({
-                  id: `user_${friend.friendId}`,
-                  type: 'FRIEND',
-                  name: friend.friendProfile.name || friend.friendProfile.username || 'Unknown',
-                  avatarText: (friend.friendProfile.name || friend.friendProfile.username || '?').charAt(0).toUpperCase(),
-                  avatarColor: friend.friendProfile.preferredColor || '#424240',
+              targetConvo = {
+                id: `user_${friend.friendId}`,
+                type: 'FRIEND',
+                name: friend.friendProfile.name || friend.friendProfile.username || 'Unknown',
+                avatarText: (friend.friendProfile.name || friend.friendProfile.username || '?').charAt(0).toUpperCase(),
+                avatarColor: friend.friendProfile.userTheme || '#534AB7',
+                messages: [],
+                unreadCount: 0,
+                lastMessageAt: Date.now(),
+                otherUserId: friend.friendId,
+                otherUsername: friend.friendProfile.username
+              };
+              formattedConvos.push(targetConvo);
+            } else {
+              // Fetch stranger profile
+              try {
+                const { getUserByUsername } = await import('../../api/authApi');
+                const strangerRes = await getUserByUsername(userParam);
+                const stranger = strangerRes.data;
+                targetConvo = {
+                  id: `user_${stranger.id}`,
+                  type: 'STRANGER',
+                  name: stranger.name || stranger.username || 'Unknown',
+                  avatarText: (stranger.name || stranger.username || '?').charAt(0).toUpperCase(),
+                  avatarColor: stranger.userTheme || '#534AB7',
                   messages: [],
                   unreadCount: 0,
                   lastMessageAt: Date.now(),
-                  otherUserId: friend.friendId,
-                  otherUsername: friend.friendProfile.username
-                });
-            } else {
-                // Fetch stranger profile
-                try {
-                    const { getUserByUsername } = await import('../../api/authApi');
-                    const strangerRes = await getUserByUsername(userParam);
-                    const stranger = strangerRes.data;
-                    formattedConvos.push({
-                      id: `user_${stranger.id}`,
-                      type: 'STRANGER',
-                      name: stranger.name || stranger.username || 'Unknown',
-                      avatarText: (stranger.name || stranger.username || '?').charAt(0).toUpperCase(),
-                      avatarColor: stranger.preferredColor || '#424240',
-                      messages: [],
-                      unreadCount: 0,
-                      lastMessageAt: Date.now(),
-                      otherUserId: stranger.id,
-                      otherUsername: stranger.username
-                    });
-                } catch (e) {
-                    console.error("Stranger not found", e);
-                }
+                  otherUserId: stranger.id,
+                  otherUsername: stranger.username
+                };
+                formattedConvos.push(targetConvo);
+              } catch (e) {
+                console.error("Stranger not found", e);
+              }
             }
+          }
+
+          if (targetConvo && reqIdParam && grpIdParam) {
+            targetConvo.pendingRequestId = Number(reqIdParam);
+            targetConvo.pendingGroupId = Number(grpIdParam);
+          }
         }
 
         formattedConvos.sort((a, b) => b.lastMessageAt - a.lastMessageAt);
@@ -247,14 +299,14 @@ const ChatsPage = () => {
     if (activeConvo && activeConvo.unreadCount > 0) {
       const unreadMsgs = activeConvo.messages.filter(m => m.receiverId === userId && !m.isRead);
       unreadMsgs.forEach(m => markAsRead(m.id).catch(console.error));
-      
-      setConversations(prev => prev.map(c => 
-        c.id === activeConvoId 
-          ? { 
-              ...c, 
-              unreadCount: 0, 
-              messages: c.messages.map(m => m.receiverId === userId ? { ...m, isRead: true } : m) 
-            }
+
+      setConversations(prev => prev.map(c =>
+        c.id === activeConvoId
+          ? {
+            ...c,
+            unreadCount: 0,
+            messages: c.messages.map(m => m.receiverId === userId ? { ...m, isRead: true } : m)
+          }
           : c
       ));
     }
@@ -264,7 +316,7 @@ const ChatsPage = () => {
     setActionLoading(true);
     try {
       await approveRequest(groupId, requestId);
-      setConversations(prev => prev.map(c => 
+      setConversations(prev => prev.map(c =>
         c.pendingRequestId === requestId ? { ...c, pendingRequestId: undefined, pendingGroupId: undefined } : c
       ));
     } catch (err) {
@@ -278,7 +330,21 @@ const ChatsPage = () => {
     setActionLoading(true);
     try {
       await rejectRequest(groupId, requestId);
-      setConversations(prev => prev.map(c => 
+      setConversations(prev => prev.map(c =>
+        c.pendingRequestId === requestId ? { ...c, pendingRequestId: undefined, pendingGroupId: undefined } : c
+      ));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleBlock = async (groupId: number, requestId: number) => {
+    setActionLoading(true);
+    try {
+      await blockRequester(groupId, requestId);
+      setConversations(prev => prev.map(c =>
         c.pendingRequestId === requestId ? { ...c, pendingRequestId: undefined, pendingGroupId: undefined } : c
       ));
     } catch (err) {
@@ -291,10 +357,10 @@ const ChatsPage = () => {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !activeConvo) return;
-    
+
     try {
       let payload: any = { content: newMessage };
-      
+
       if (activeConvo.type === 'GROUP' && activeConvo.groupId) {
         payload.chatType = 'GROUP';
         payload.groupId = activeConvo.groupId;
@@ -306,18 +372,18 @@ const ChatsPage = () => {
       }
 
       const res = await sendMessage(payload);
-      
+
       setConversations(prev => prev.map(c => {
         if (c.id === activeConvoId) {
-          return { 
-            ...c, 
+          return {
+            ...c,
             messages: [...c.messages, res.data],
             lastMessageAt: new Date(res.data.createdAt).getTime()
           };
         }
         return c;
       }).sort((a, b) => b.lastMessageAt - a.lastMessageAt));
-      
+
       setNewMessage('');
     } catch (err) {
       console.error('Failed to send message', err);
@@ -325,7 +391,7 @@ const ChatsPage = () => {
   };
 
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const handleClearChat = async () => {
     if (!activeConvo || !activeConvo.otherUserId) return;
     setActionLoading(true);
@@ -349,34 +415,38 @@ const ChatsPage = () => {
     );
   }
 
-  const filteredConversations = conversations.filter(c => 
+  const filteredConversations = conversations.filter(c =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#121212' }}>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#121212' }}>
       <Navbar />
-      
-      <div className="flex-1 max-w-7xl w-full mx-auto p-4 flex gap-6 overflow-hidden h-[calc(100vh-80px)]">
-        
+
+      <div className="flex-1 max-w-7xl w-full mx-auto p-4 flex overflow-hidden">
+
         {/* Sidebar */}
-        <div className={`w-full md:w-96 flex flex-col rounded-2xl overflow-hidden shrink-0 transition-transform ${activeConvoId ? 'hidden md:flex' : 'flex'}`} style={{ background: '#1a1a18', border: '1px solid #363634' }}>
+        <div
+          className={`flex flex-col rounded-2xl overflow-hidden shrink-0 transition-none ${activeConvoId ? 'hidden md:flex' : 'flex w-full'}`}
+          style={{
+            background: '#1a1a18',
+            border: '1px solid #363634',
+            width: window.innerWidth >= 768 ? sidebarWidth : undefined
+          }}
+        >
           <div className="p-5 border-b" style={{ borderColor: '#363634' }}>
             <h2 className="text-2xl font-bold text-white mb-4">Chats</h2>
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">
-                🔍
-              </span>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search chats..."
-                className="w-full bg-[#2C2C2A] text-white border border-[#363634] rounded-xl pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-[#534AB7] transition-colors"
+                placeholder="Search"
+                className="w-full px-4 py-3 bg-[#1A1A18] border border-[#363634] rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#7F77DD] transition-all shadow-xl"
               />
             </div>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto">
             {filteredConversations.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
@@ -395,12 +465,12 @@ const ChatsPage = () => {
                   <button
                     key={convo.id}
                     onClick={() => {
-                        setActiveConvoId(convo.id);
-                        // Clean up URL params silently
-                        setSearchParams({});
+                      setActiveConvoId(convo.id);
+                      // Clean up URL params silently
+                      setSearchParams({});
                     }}
                     className="w-full p-4 flex items-center gap-4 text-left transition-colors border-b"
-                    style={{ 
+                    style={{
                       background: activeConvoId === convo.id ? '#2C2C2A' : 'transparent',
                       borderColor: '#363634'
                     }}
@@ -427,8 +497,8 @@ const ChatsPage = () => {
                         )}
                       </div>
                       <p className="text-sm text-gray-400 truncate">
-                        {convo.messages.length > 0 
-                          ? convo.messages[convo.messages.length - 1].content 
+                        {convo.messages.length > 0
+                          ? convo.messages[convo.messages.length - 1].content
                           : 'Tap to start chatting'}
                       </p>
                     </div>
@@ -439,8 +509,17 @@ const ChatsPage = () => {
           </div>
         </div>
 
+        {/* Resizer Splitter */}
+        <div
+          className="hidden md:flex w-4 cursor-col-resize items-center justify-center shrink-0 group select-none"
+          onMouseDown={() => isDragging.current = true}
+          onTouchStart={() => isDragging.current = true}
+        >
+          <div className="w-1 h-12 rounded-full bg-gray-700 group-hover:bg-[#7F77DD] transition-colors" />
+        </div>
+
         {/* Chat Window */}
-        <div className={`flex-1 flex flex-col rounded-2xl overflow-hidden relative ${!activeConvoId ? 'hidden md:flex' : 'flex'}`} style={{ background: '#1a1a18', border: '1px solid #363634' }}>
+        <div className={`flex-1 flex flex-col rounded-2xl overflow-hidden relative ${!activeConvoId ? 'hidden md:flex' : 'flex w-full'}`} style={{ background: '#1a1a18', border: '1px solid #363634' }}>
           {activeConvo ? (
             <>
               {/* Chat Header */}
@@ -448,7 +527,7 @@ const ChatsPage = () => {
                 <button onClick={() => setActiveConvoId(null)} className="md:hidden p-2 text-gray-400 hover:text-white">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 </button>
-                
+
                 <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold" style={{ background: activeConvo.avatarColor }}>
                   {activeConvo.avatarText}
                 </div>
@@ -462,10 +541,10 @@ const ChatsPage = () => {
                     {activeConvo.type === 'GROUP' ? 'Group Chat' : `@${activeConvo.otherUsername || 'user'}`}
                   </p>
                 </div>
-                
+
                 {/* Clear Chat Button (only for 1:1 chats) */}
                 {activeConvo.type !== 'GROUP' && (
-                  <button 
+                  <button
                     onClick={handleClearChat}
                     disabled={actionLoading}
                     className="p-2 text-gray-500 hover:text-red-400 transition-colors bg-[#1a1a18] rounded-xl border border-[#363634] hover:border-red-900 flex items-center gap-2"
@@ -476,44 +555,63 @@ const ChatsPage = () => {
                 )}
               </div>
 
-              {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {activeConvo.messages.map((msg, i) => {
-                  const isMe = msg.senderId === userId;
-                  return (
-                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[75%] rounded-2xl px-4 py-2 ${isMe ? 'text-white shadow-md' : 'text-gray-200'}`}
-                           style={{ background: isMe ? '#7F77DD' : '#2C2C2A' }}>
-                        {msg.chatType === 'JOIN_REQUEST' && !isMe && (
-                          <div className="text-[10px] uppercase font-bold text-[#F0997B] mb-1">Join Request</div>
-                        )}
-                        <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                        <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-indigo-200' : 'text-gray-500'}`}>
-                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </div>
+              {/* Messages & Floating Action Bar Wrapper */}
+              <div className="flex-1 relative overflow-hidden flex flex-col">
 
-              {/* Action Bar (Join Requests) */}
-              {activeConvo.pendingRequestId && activeConvo.pendingGroupId && (
-                <div className="p-3 mx-4 mb-4 rounded-xl flex items-center justify-between" style={{ background: 'rgba(240, 153, 123, 0.1)', border: '1px solid rgba(240, 153, 123, 0.2)' }}>
-                  <p className="text-sm" style={{ color: '#F0997B' }}>This user has requested to join your group.</p>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleApprove(activeConvo.pendingGroupId!, activeConvo.pendingRequestId!)} disabled={actionLoading}
-                      className="px-4 py-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 text-sm font-bold transition-colors">
-                      Approve
-                    </button>
-                    <button onClick={() => handleReject(activeConvo.pendingGroupId!, activeConvo.pendingRequestId!)} disabled={actionLoading}
-                      className="px-4 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm font-bold transition-colors">
-                      Reject
-                    </button>
-                  </div>
+                {/* Chat Messages */}
+                <div className={`flex-1 overflow-y-auto p-4 space-y-4 ${activeConvo.pendingRequestId && activeConvo.pendingGroupId ? 'pb-32' : 'pb-4'}`}>
+                  {(() => {
+                    const firstJoinReq = activeConvo.messages.find(m => m.chatType === 'JOIN_REQUEST');
+
+                    return activeConvo.messages.map((msg, i) => {
+                      const isMe = msg.senderId === userId;
+                      const isApplicant = firstJoinReq ? msg.senderId === firstJoinReq.senderId : false;
+
+                      return (
+                        <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[75%] rounded-2xl px-4 py-2 ${isMe ? 'text-white shadow-md' : 'text-gray-200'}`}
+                            style={{ background: isMe ? '#7F77DD' : '#2C2C2A' }}>
+                            {msg.chatType === 'JOIN_REQUEST' && isApplicant && !isMe && (
+                              <div className="text-[10px] uppercase font-bold text-[#F0997B] mb-1">Join Request</div>
+                            )}
+                            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                            <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-indigo-200' : 'text-gray-500'}`}>
+                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  })()}
+                  <div ref={messagesEndRef} />
                 </div>
-              )}
+
+                {/* Action Bar (Join Requests) */}
+                {activeConvo.pendingRequestId && activeConvo.pendingGroupId && (
+                  <div className="absolute bottom-4 left-4 right-4 p-3 rounded-xl flex items-center justify-between flex-wrap gap-3 shadow-2xl backdrop-blur-md" style={{ background: 'rgba(240, 153, 123, 0.15)', border: '1px solid rgba(240, 153, 123, 0.3)' }}>
+                    <p className="text-sm font-medium" style={{ color: '#F0997B' }}>This user has requested to join your group.</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button onClick={() => handleApprove(activeConvo.pendingGroupId!, activeConvo.pendingRequestId!)} disabled={actionLoading}
+                        className="px-5 py-2 rounded-xl bg-green-500/10 text-green-500 hover:bg-green-500/20 text-sm font-bold transition-colors border border-green-500/20 shadow-lg">
+                        Approve
+                      </button>
+                      <button onClick={() => handleReject(activeConvo.pendingGroupId!, activeConvo.pendingRequestId!)} disabled={actionLoading}
+                        className="px-5 py-2 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 text-sm font-bold transition-colors border border-red-500/20 shadow-lg">
+                        Reject
+                      </button>
+                      <button onClick={async () => {
+                        const confirmed = await confirm("Are you sure you want to block this user from joining?", { isDestructive: true });
+                        if (confirmed) {
+                          handleBlock(activeConvo.pendingGroupId!, activeConvo.pendingRequestId!);
+                        }
+                      }} disabled={actionLoading}
+                        className="px-5 py-2 rounded-xl bg-[#1a1a18] text-gray-400 border border-gray-100/20 hover:text-red-400 text-sm font-bold transition-colors border border-[#363634] hover:border-red-900/50 shadow-lg">
+                        Block
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Chat Input */}
               <div className="p-4 border-t" style={{ background: '#2C2C2A', borderColor: '#363634' }}>
@@ -544,7 +642,7 @@ const ChatsPage = () => {
             </div>
           )}
         </div>
-        
+
       </div>
     </div>
   );

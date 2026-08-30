@@ -47,6 +47,9 @@ public class GroupService {
     @Autowired
     private MeilisearchSyncService meilisearchSyncService;
 
+    @Autowired
+    private com.gl.app.GroupService.repository.TagRepository tagRepository;
+
     /**
      * Creates a new habit group owned by the given user.
      *
@@ -61,6 +64,7 @@ public class GroupService {
         group.setInviteCode(generateInviteCode());
         group.setOwnerId(userId);
         group.setCompetitionActive(false); // Can be enabled if they want to track it
+        group.setNotificationsEnabled(request.getNotificationsEnabled() != null ? request.getNotificationsEnabled() : true);
         group.setDescription(request.getDescription());
         com.gl.app.GroupService.entity.Discoverability vis = com.gl.app.GroupService.entity.Discoverability.INVITE_ONLY;
         if (request.getVisibility() != null) {
@@ -74,7 +78,9 @@ public class GroupService {
         int days = request.getDays() != null ? request.getDays() : 0;
 
         if (years > 0 || months > 0 || weeks > 0 || days > 0) {
-            LocalDateTime endDate = LocalDateTime.now().plusYears(years).plusMonths(months).plusWeeks(weeks).plusDays(days);
+            LocalDateTime endDate = LocalDateTime.now(java.time.ZoneOffset.UTC)
+                    .plusYears(years).plusMonths(months).plusWeeks(weeks).plusDays(days)
+                    .withHour(12).withMinute(0).withSecond(0).withNano(0);
             group.setCompetitionStartDate(LocalDateTime.now());
             group.setCompetitionEndDate(endDate);
             group.setCompetitionActive(true);
@@ -105,6 +111,60 @@ public class GroupService {
         // Sync to Meilisearch
         meilisearchSyncService.syncGroup(group);
         
+        return toResponse(group);
+    }
+
+    /**
+     * Updates group settings. Only owner or admin can update settings.
+     */
+    public GroupResponse updateGroupSettings(Long groupId, Long userId, com.gl.app.GroupService.dto.UpdateGroupSettingsRequest request) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
+
+        if (!group.getOwnerId().equals(userId)) {
+            boolean isAdmin = groupMemberRepository.findByGroupId(groupId).stream()
+                    .anyMatch(m -> m.getUserId().equals(userId) && Boolean.TRUE.equals(m.getIsAdmin()));
+            if (!isAdmin) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can update group settings");
+            }
+        }
+
+        if (request.getName() != null && !request.getName().isBlank()) {
+            group.setName(request.getName());
+        }
+        if (request.getDescription() != null) {
+            group.setDescription(request.getDescription());
+        }
+        if (request.getLatitude() != null) {
+            group.setLatitude(request.getLatitude());
+        }
+        if (request.getLongitude() != null) {
+            group.setLongitude(request.getLongitude());
+        }
+        if (request.getAddressDisplay() != null) {
+            group.setAddressDisplay(request.getAddressDisplay());
+        }
+        if (request.getNotificationsEnabled() != null && !request.getNotificationsEnabled().equals(group.getNotificationsEnabled())) {
+            if (!group.getOwnerId().equals(userId)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the owner can toggle notifications");
+            }
+            group.setNotificationsEnabled(request.getNotificationsEnabled());
+        }
+
+        if (request.getTags() != null) {
+            group.getTags().clear();
+            for (String tagStr : request.getTags()) {
+                com.gl.app.GroupService.entity.Tag tag = tagRepository.findByNameIgnoreCase(tagStr.toLowerCase().trim())
+                        .orElseGet(() -> tagRepository.save(new com.gl.app.GroupService.entity.Tag(null, tagStr.toLowerCase().trim(), null)));
+                group.getTags().add(tag);
+            }
+        }
+
+        group = groupRepository.save(group);
+
+        // Sync with Meilisearch
+        meilisearchSyncService.syncGroup(group);
+
         return toResponse(group);
     }
 
@@ -140,10 +200,18 @@ public class GroupService {
      * @return the created habit as a {@link GroupHabitResponse}
      * @throws ResponseStatusException 404 if group not found
      */
-    public GroupHabitResponse addHabit(Long groupId, AddHabitRequest request) {
+    public GroupHabitResponse addHabit(Long groupId, AddHabitRequest request, Long userId) {
         log.info("Adding habit '{}' to group {}", request.getTitle(), groupId);
-        groupRepository.findById(groupId)
+        Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
+
+        if (!group.getOwnerId().equals(userId)) {
+            boolean isAdmin = groupMemberRepository.findByGroupId(groupId).stream()
+                    .anyMatch(m -> m.getUserId().equals(userId) && Boolean.TRUE.equals(m.getIsAdmin()));
+            if (!isAdmin) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can add habits");
+            }
+        }
 
         GroupHabit habit = new GroupHabit(null, groupId, request.getTitle(), request.getDescription());
         habit = groupHabitRepository.save(habit);
@@ -165,7 +233,11 @@ public class GroupService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
 
         if (!group.getOwnerId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the group owner can delete habits");
+            boolean isAdmin = groupMemberRepository.findByGroupId(groupId).stream()
+                    .anyMatch(m -> m.getUserId().equals(userId) && Boolean.TRUE.equals(m.getIsAdmin()));
+            if (!isAdmin) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can delete habits");
+            }
         }
 
         GroupHabit habit = groupHabitRepository.findById(habitId)
@@ -216,21 +288,26 @@ public class GroupService {
 
         boolean hasPending = groupJoinRequestRepository.findByGroupIdAndStatus(group.getId(), RequestStatus.PENDING).size() > 0;
 
-        return new GroupResponse(
-                group.getId(),
-                group.getName(),
-                group.getInviteCode(),
-                group.getOwnerId(),
-                memberIds,
-                adminIds,
-                habits,
-                group.getVisibility() != null ? group.getVisibility().name() : null,
-                hasPending,
-                false, // currentUserRequested default
-                group.getDescription(),
-                group.getDuration(),
-                group.getCompetitionEndDate()
-        );
+        GroupResponse response = new GroupResponse();
+        response.setId(group.getId());
+        response.setName(group.getName());
+        response.setInviteCode(group.getInviteCode());
+        response.setOwnerId(group.getOwnerId());
+        response.setMemberIds(memberIds);
+        response.setAdminIds(adminIds);
+        response.setHabits(habits);
+        response.setVisibility(group.getVisibility() != null ? group.getVisibility().name() : null);
+        response.setHasPendingRequests(hasPending);
+        response.setCurrentUserRequested(false);
+        response.setNotificationsEnabled(group.getNotificationsEnabled());
+        response.setConsistencyScore(group.getConsistencyScore());
+        response.setCurrentGlobalHabitGroupStreak(group.getCurrentGlobalHabitGroupStreak());
+        response.setHighestHabitGroupStreak(group.getHighestHabitGroupStreak());
+        response.setCreatedAt(group.getCreatedAt());
+        response.setDescription(group.getDescription());
+        response.setDuration(group.getDuration());
+        response.setCompetitionEndDate(group.getCompetitionEndDate());
+        return response;
     }
 
     /**
@@ -241,9 +318,16 @@ public class GroupService {
      */
     public List<GroupResponse> getUserGroups(Long userId) {
         return groupMemberRepository.findByUserId(userId).stream()
-                .map(member -> groupRepository.findById(member.getGroupId()).orElse(null))
-                .filter(group -> group != null)
-                .map(this::toResponse)
+                .map(member -> {
+                    Group group = groupRepository.findById(member.getGroupId()).orElse(null);
+                    if (group != null) {
+                        GroupResponse response = toResponse(group);
+                        response.setNotificationsEnabled(group.getNotificationsEnabled());
+                        return response;
+                    }
+                    return null;
+                })
+                .filter(response -> response != null)
                 .collect(Collectors.toList());
     }
 
@@ -272,15 +356,15 @@ public class GroupService {
             }
         }
 
-        LocalDateTime newDeadline = LocalDateTime.now();
+        LocalDateTime newDeadline = LocalDateTime.now(java.time.ZoneOffset.UTC);
         if ("ADD".equals(request.getMode())) {
-            newDeadline = group.getCompetitionEndDate() != null ? group.getCompetitionEndDate() : LocalDateTime.now();
+            newDeadline = group.getCompetitionEndDate() != null ? group.getCompetitionEndDate() : LocalDateTime.now(java.time.ZoneOffset.UTC);
             newDeadline = newDeadline.plusYears(request.getYears() != null ? request.getYears() : 0)
                                      .plusMonths(request.getMonths() != null ? request.getMonths() : 0)
                                      .plusWeeks(request.getWeeks() != null ? request.getWeeks() : 0)
                                      .plusDays(request.getDays() != null ? request.getDays() : 0);
         } else if ("REDUCE".equals(request.getMode())) {
-            newDeadline = group.getCompetitionEndDate() != null ? group.getCompetitionEndDate() : LocalDateTime.now();
+            newDeadline = group.getCompetitionEndDate() != null ? group.getCompetitionEndDate() : LocalDateTime.now(java.time.ZoneOffset.UTC);
             newDeadline = newDeadline.minusYears(request.getYears() != null ? request.getYears() : 0)
                                      .minusMonths(request.getMonths() != null ? request.getMonths() : 0)
                                      .minusWeeks(request.getWeeks() != null ? request.getWeeks() : 0)
@@ -288,6 +372,8 @@ public class GroupService {
         } else if ("SET".equals(request.getMode()) && request.getNewDate() != null) {
             newDeadline = request.getNewDate();
         }
+        
+        newDeadline = newDeadline.withHour(12).withMinute(0).withSecond(0).withNano(0);
 
         group.setCompetitionEndDate(newDeadline);
         return toResponse(groupRepository.save(group));
@@ -317,6 +403,44 @@ public class GroupService {
         target.setIsAdmin(true);
         groupMemberRepository.save(target);
 
+        return toResponse(group);
+    }
+
+    /**
+     * Demotes an admin back to a regular member.
+     */
+    public GroupResponse demoteMember(Long groupId, Long targetId, Long userId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
+
+        if (!group.getOwnerId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the owner can demote admins");
+        }
+
+        GroupMember target = groupMemberRepository.findByGroupId(groupId).stream()
+                .filter(m -> m.getUserId().equals(targetId))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Target user is not a member"));
+
+        target.setIsAdmin(false);
+        groupMemberRepository.save(target);
+
+        return toResponse(group);
+    }
+
+    /**
+     * Toggles the notification settings for the group. Only owner can do this.
+     */
+    public GroupResponse toggleGroupNotifications(Long groupId, Long userId, boolean enabled) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
+
+        if (!group.getOwnerId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the owner can toggle notifications");
+        }
+
+        group.setNotificationsEnabled(enabled);
+        group = groupRepository.save(group);
         return toResponse(group);
     }
 

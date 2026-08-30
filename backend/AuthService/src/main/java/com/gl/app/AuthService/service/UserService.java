@@ -149,6 +149,7 @@ public class UserService {
         dto.setLatitude(profile.getLatitude());
         dto.setLongitude(profile.getLongitude());
         dto.setTimeZone(profile.getTimeZone());
+        dto.setAutoTimezone(profile.getAutoTimezone());
 
         dto.setLocationVisibility(profile.getLocationVisibility() != null ? profile.getLocationVisibility().name() : null);
         dto.setBio(profile.getBio());
@@ -183,6 +184,13 @@ public class UserService {
         profile.setLongitude(request.getLongitude());
         profile.setBio(request.getBio());
         
+        if (request.getTimeZone() != null) {
+            profile.setTimeZone(request.getTimeZone());
+        }
+        if (request.getAutoTimezone() != null) {
+            profile.setAutoTimezone(request.getAutoTimezone());
+        }
+        
         if (request.getLocationVisibility() != null) {
             profile.setLocationVisibility(com.gl.app.AuthService.entity.Visibility.valueOf(request.getLocationVisibility()));
         }
@@ -207,6 +215,7 @@ public class UserService {
         dto.setLatitude(savedProfile.getLatitude());
         dto.setLongitude(savedProfile.getLongitude());
         dto.setTimeZone(savedProfile.getTimeZone());
+        dto.setAutoTimezone(savedProfile.getAutoTimezone());
 
         dto.setLocationVisibility(savedProfile.getLocationVisibility() != null ? savedProfile.getLocationVisibility().name() : null);
         dto.setBio(savedProfile.getBio());
@@ -218,5 +227,30 @@ public class UserService {
         meilisearchSyncService.syncUser(user);
         
         return dto;
+    }
+
+    public java.util.Map<String, Object> getUserMeta(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        UserProfile profile = userProfileRepository.findByUserId(userId).orElse(new UserProfile());
+        
+        java.util.Map<String, Object> meta = new java.util.HashMap<>();
+        meta.put("email", user.getEmail());
+        meta.put("username", user.getUsername());
+        meta.put("timezone", profile.getTimeZone() != null ? profile.getTimeZone() : "UTC");
+        meta.put("emailVerified", user.getEmailVerified());
+        meta.put("emailBounced", user.getEmailBounced());
+        meta.put("emailNotificationsEnabled", user.getEmailNotificationsEnabled());
+        meta.put("notificationWindowStart", user.getNotificationWindowStart());
+        meta.put("notificationWindowEnd", user.getNotificationWindowEnd());
+        meta.put("notificationFrequency", user.getNotificationFrequency());
+        return meta;
+    }
+
+    public void unsubscribeUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        user.setEmailNotificationsEnabled(false);
+        userRepository.save(user);
     }
 }

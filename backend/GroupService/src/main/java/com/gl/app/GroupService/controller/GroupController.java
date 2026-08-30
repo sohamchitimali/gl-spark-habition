@@ -30,6 +30,9 @@ public class GroupController {
     @Autowired
     private com.gl.app.GroupService.service.JoinRequestService joinRequestService;
 
+    @Autowired
+    private com.gl.app.GroupService.service.GroupMembershipModerationService groupMembershipModerationService;
+
     /**
      * Creates a new habit group.
      * Relates to US-002.
@@ -71,8 +74,9 @@ public class GroupController {
     @PostMapping("/{id}/habits")
     public ResponseEntity<GroupHabitResponse> addHabit(
             @PathVariable Long id,
-            @RequestBody @Valid AddHabitRequest request) {
-        return new ResponseEntity<>(groupService.addHabit(id, request), HttpStatus.CREATED);
+            @RequestBody @Valid AddHabitRequest request,
+            @RequestHeader("X-User-Id") Long userId) {
+        return new ResponseEntity<>(groupService.addHabit(id, request, userId), HttpStatus.CREATED);
     }
 
     /**
@@ -160,6 +164,22 @@ public class GroupController {
     }
 
     /**
+     * Updates group settings.
+     *
+     * @param id      the group ID
+     * @param request the settings details
+     * @param userId  the authenticated user's ID
+     * @return 200 OK with updated group
+     */
+    @PutMapping("/{id}/settings")
+    public ResponseEntity<GroupResponse> updateGroupSettings(
+            @PathVariable Long id,
+            @RequestBody com.gl.app.GroupService.dto.UpdateGroupSettingsRequest request,
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(groupService.updateGroupSettings(id, userId, request));
+    }
+
+    /**
      * Promotes a member to admin.
      *
      * @param groupId        the group ID
@@ -173,6 +193,40 @@ public class GroupController {
             @PathVariable Long targetId,
             @RequestHeader("X-User-Id") Long userId) {
         return ResponseEntity.ok(groupService.promoteToAdmin(id, targetId, userId));
+    }
+
+    /**
+     * Demotes an admin.
+     *
+     * @param id        the group ID
+     * @param targetId  the user ID to demote
+     * @param userId    the authenticated user's ID
+     * @return 200 OK with updated group
+     */
+    @PostMapping("/{id}/members/{targetId}/demote")
+    public ResponseEntity<GroupResponse> demoteMember(
+            @PathVariable Long id,
+            @PathVariable Long targetId,
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(groupService.demoteMember(id, targetId, userId));
+    }
+
+    @DeleteMapping("/{id}/members/{targetId}/kick")
+    public ResponseEntity<Void> kickMember(
+            @PathVariable Long id,
+            @PathVariable Long targetId,
+            @RequestHeader("X-User-Id") Long userId) {
+        groupMembershipModerationService.kickMember(id, targetId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/members/{targetId}/kickAndBlock")
+    public ResponseEntity<Void> kickAndBlockMember(
+            @PathVariable Long id,
+            @PathVariable Long targetId,
+            @RequestHeader("X-User-Id") Long userId) {
+        groupMembershipModerationService.kickAndBlockMember(id, targetId, userId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/my-requests")
@@ -209,5 +263,21 @@ public class GroupController {
             @RequestHeader("X-User-Id") Long userId) {
         groupService.leaveGroup(id, userId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Toggles the notification settings for the group. Only accessible by the owner.
+     *
+     * @param id      the group ID
+     * @param enabled the new notification state
+     * @param userId  the authenticated user's ID
+     * @return 200 OK with updated group
+     */
+    @PatchMapping("/{id}/notifications")
+    public ResponseEntity<GroupResponse> toggleGroupNotifications(
+            @PathVariable Long id,
+            @RequestParam boolean enabled,
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(groupService.toggleGroupNotifications(id, userId, enabled));
     }
 }

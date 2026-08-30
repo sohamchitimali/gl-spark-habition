@@ -1,6 +1,6 @@
 package com.gl.app.HabitService.service;
 
-import com.gl.app.HabitService.client.CoinServiceClient;
+import com.gl.app.HabitService.client.GroupCoinClient;
 import com.gl.app.HabitService.dto.*;
 import com.gl.app.HabitService.entity.Habit;
 import com.gl.app.HabitService.entity.HabitCompletion;
@@ -17,14 +17,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Set;
+import java.time.ZoneId;
+import java.util.*;
 import java.util.stream.Collectors;
+import com.gl.app.HabitService.client.GroupServiceClient;
+import com.gl.app.HabitService.dto.GroupResponse;
 
 /**
  * Business logic for habit tracking: daily completions, streak calculation, and heatmap data.
@@ -51,7 +55,10 @@ public class HabitService {
     private HabitTaskRepository taskRepository;
 
     @Autowired
-    private CoinServiceClient coinServiceClient;
+    private GroupCoinClient groupCoinClient;
+
+    @Autowired
+    private GroupServiceClient groupServiceClient;
 
     @Autowired
     private HeatmapRecordRepository heatmapRecordRepository;
@@ -127,7 +134,7 @@ public class HabitService {
     public HabitTaskResponse createTask(Long habitId, String title) {
         habitRepository.findById(habitId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Habit not found"));
-        HabitTask task = new HabitTask(null, habitId, title, false);
+        HabitTask task = new HabitTask(null, habitId, title, false, null);
         HabitTask saved = taskRepository.save(task);
         return toTaskResponse(saved);
     }
@@ -139,7 +146,22 @@ public class HabitService {
      * @return list of task response DTOs
      */
     public List<HabitTaskResponse> getTasksForHabit(Long habitId) {
-        return taskRepository.findByHabitId(habitId).stream()
+        LocalDate today = getLocalDate();
+        List<HabitTask> tasks = taskRepository.findByHabitId(habitId);
+        boolean updated = false;
+
+        for (HabitTask task : tasks) {
+            if (task.isCompleted() && (task.getLastCompletedDate() == null || task.getLastCompletedDate().isBefore(today))) {
+                task.setCompleted(false);
+                updated = true;
+            }
+        }
+
+        if (updated) {
+            tasks = taskRepository.saveAll(tasks);
+        }
+
+        return tasks.stream()
                 .map(this::toTaskResponse)
                 .collect(Collectors.toList());
     }
@@ -153,7 +175,12 @@ public class HabitService {
     public HabitTaskResponse toggleTask(Long taskId) {
         HabitTask task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
+        
         task.setCompleted(!task.isCompleted());
+        if (task.isCompleted()) {
+            task.setLastCompletedDate(getLocalDate());
+        }
+
         HabitTask savedTask = taskRepository.save(task);
 
         // Update heatmap record based on task completion
@@ -165,42 +192,59 @@ public class HabitService {
         return toTaskResponse(savedTask);
     }
 
+    private LocalDate getLocalDate() {
+        ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attrs != null) {
+            String tz = attrs.getRequest().getHeader("X-Timezone");
+            if (tz != null && !tz.isEmpty()) {
+                try {
+                    return LocalDate.now(ZoneId.of(tz));
+                } catch (Exception e) {
+                    log.warn("Invalid timezone from header: {}", tz);
+                }
+            }
+        }
+        return LocalDate.now(ZoneId.of("UTC"));
+    }
+
     private void updateHeatmapRecord(Habit habit) {
-        LocalDate today = LocalDate.now();
-        int totalTasks = 0;
-        int completedTasks = 0;
+        LocalDate today = getLocalDate();
+        int totalHabits = 0;
+        int completedHabits = 0;
 
         if (habit.getGroupId() == null) {
             // Personal heatmap calculation
             List<Habit> personalHabits = habitRepository.findByUserId(habit.getUserId()).stream()
                     .filter(h -> h.getGroupId() == null).collect(Collectors.toList());
+            totalHabits = personalHabits.size();
             for (Habit h : personalHabits) {
-                List<HabitTask> tasks = taskRepository.findByHabitId(h.getId());
-                totalTasks += tasks.size();
-                completedTasks += tasks.stream().filter(HabitTask::isCompleted).count();
+                if (completionRepository.existsByHabitIdAndUserIdAndCompletionDate(h.getId(), h.getUserId(), today)) {
+                    completedHabits++;
+                }
             }
-            int percentage = totalTasks == 0 ? 0 : Math.round(((float) completedTasks / totalTasks) * 100);
+            int percentage = totalHabits == 0 ? 0 : Math.round(((float) completedHabits / totalHabits) * 100);
             
             HeatmapRecord record = heatmapRecordRepository.findByUserIdAndGroupIdIsNullAndRecordDate(habit.getUserId(), today)
                     .orElse(new HeatmapRecord(null, habit.getUserId(), null, today, 0, 0, 0));
-            record.setTotalTasks(totalTasks);
-            record.setCompletedTasks(completedTasks);
+            record.setTotalTasks(totalHabits);
+            record.setCompletedTasks(completedHabits);
             record.setCompletionPercentage(percentage);
             heatmapRecordRepository.save(record);
         } else {
             // Group heatmap calculation
             List<Habit> groupHabits = habitRepository.findByGroupId(habit.getGroupId());
+            totalHabits = groupHabits.size();
             for (Habit h : groupHabits) {
-                List<HabitTask> tasks = taskRepository.findByHabitId(h.getId());
-                totalTasks += tasks.size();
-                completedTasks += tasks.stream().filter(HabitTask::isCompleted).count();
+                if (completionRepository.existsByHabitIdAndUserIdAndCompletionDate(h.getId(), h.getUserId(), today)) {
+                    completedHabits++;
+                }
             }
-            int percentage = totalTasks == 0 ? 0 : Math.round(((float) completedTasks / totalTasks) * 100);
+            int percentage = totalHabits == 0 ? 0 : Math.round(((float) completedHabits / totalHabits) * 100);
             
             HeatmapRecord record = heatmapRecordRepository.findByGroupIdAndUserIdIsNullAndRecordDate(habit.getGroupId(), today)
                     .orElse(new HeatmapRecord(null, null, habit.getGroupId(), today, 0, 0, 0));
-            record.setTotalTasks(totalTasks);
-            record.setCompletedTasks(completedTasks);
+            record.setTotalTasks(totalHabits);
+            record.setCompletedTasks(completedHabits);
             record.setCompletionPercentage(percentage);
             heatmapRecordRepository.save(record);
         }
@@ -236,7 +280,7 @@ public class HabitService {
         Habit habit = habitRepository.findById(habitId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Habit not found"));
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = getLocalDate();
         if (completionRepository.existsByHabitIdAndUserIdAndCompletionDate(habitId, userId, today)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Habit already completed today");
         }
@@ -251,6 +295,7 @@ public class HabitService {
         HabitCompletion completion = new HabitCompletion(null, habitId, userId, today, LocalDateTime.now());
         completionRepository.save(completion);
 
+        updateHeatmapRecord(habit);
         updateStreakSnapshots(userId, today);
 
         int streak = calculateStreak(userId);
@@ -260,7 +305,7 @@ public class HabitService {
             log.info("Streak milestone {}! Bonus coins awarded to userId={}", streak, userId);
         }
 
-        coinServiceClient.creditCoins(new CreditCoinsRequest(userId, coinsEarned,
+        groupCoinClient.creditCoins(new CreditCoinsRequest(userId, coinsEarned,
                 "Habit completion: " + habit.getTitle(), habit.getGroupId()));
 
         log.info("User {} completed habit {}. Streak={} Coins={}", userId, habitId, streak, coinsEarned);
@@ -285,7 +330,7 @@ public class HabitService {
     }
 
     private int calculateStreakByGroup(Long userId, Long groupId) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = getLocalDate();
         int streak = 0;
         
         // Evaluate today dynamically (since admin might have added a habit today)
@@ -373,14 +418,14 @@ public class HabitService {
     public StreakResponse getStreak(Long userId) {
         int current = calculateStreak(userId);
         int best = calculatePersonalBest(userId);
-        boolean todayEarned = evaluateStreakForDate(userId, null, LocalDate.now());
+        boolean todayEarned = evaluateStreakForDate(userId, null, getLocalDate());
         return new StreakResponse(userId, current, best, todayEarned);
     }
 
     public StreakResponse getGroupStreak(Long userId, Long groupId) {
         int current = calculateGroupStreak(userId, groupId);
         int best = calculateBestStreakByGroup(userId, groupId);
-        boolean todayEarned = evaluateStreakForDate(userId, groupId, LocalDate.now());
+        boolean todayEarned = evaluateStreakForDate(userId, groupId, getLocalDate());
         return new StreakResponse(userId, current, best, todayEarned);
     }
 
@@ -409,7 +454,7 @@ public class HabitService {
     // ─── Private helpers ──────────────────────────────────────────────────────
 
     private HabitResponse toHabitResponse(Habit habit) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = getLocalDate();
         boolean completed = completionRepository.existsByHabitIdAndUserIdAndCompletionDate(habit.getId(), habit.getUserId(), today);
         List<HabitTaskResponse> tasks = getTasksForHabit(habit.getId());
         return new HabitResponse(
@@ -447,7 +492,7 @@ public class HabitService {
             earnedSnapshots = snapshotRepository.findGroupEarnedSnapshotsDesc(userId, groupId);
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = getLocalDate();
         boolean todayEarned = evaluateStreakForDate(userId, groupId, today);
 
         List<LocalDate> fullDays = earnedSnapshots.stream()
@@ -472,5 +517,94 @@ public class HabitService {
             }
         }
         return best;
+    }
+
+    // ─── Consistency ──────────────────────────────────────────────────────────
+
+    public java.util.Map<String, Object> getPersonalOverallConsistency(Long userId) {
+        Double score = heatmapRecordRepository.getPersonalOverallConsistency(userId);
+        Map<String, Object> response = new HashMap<>();
+        response.put("score", score != null ? score : 0.0);
+        return response;
+    }
+
+    public java.util.Map<String, Object> getGroupOverallConsistency(Long groupId) {
+        Double score = heatmapRecordRepository.getGroupOverallConsistency(groupId);
+        Map<String, Object> response = new HashMap<>();
+        response.put("score", score != null ? score : 0.0);
+        return response;
+    }
+
+    public java.util.Map<String, Object> getIndividualGroupConsistency(Long groupId, Long userId) {
+        Double score = heatmapRecordRepository.getIndividualGroupConsistency(groupId, userId);
+        Map<String, Object> response = new HashMap<>();
+        response.put("score", score != null ? score : 0.0);
+        return response;
+    }
+
+    // ─── Consistency endpoints ────────────────────────────────────────────────
+
+    /**
+     * Builds the completion status report for the notification engine.
+     */
+    public List<Map<String, Object>> getCompletionStatusToday(Long userId) {
+        LocalDate today = getLocalDate();
+        log.info("Fetching completion status for user {} for local date {}", userId, today);
+        List<Habit> habits = habitRepository.findByUserId(userId);
+        List<HabitCompletion> completionsToday = completionRepository.findByUserIdAndCompletionDate(userId, today);
+        Set<Long> completedHabitIds = completionsToday.stream().map(HabitCompletion::getHabitId).collect(Collectors.toSet());
+
+        // Group by groupId (null = personal)
+        Map<Long, List<Habit>> habitsByGroup = habits.stream()
+                .collect(Collectors.groupingBy(h -> h.getGroupId() == null ? -1L : h.getGroupId()));
+
+        // Fetch user groups
+        List<GroupResponse> userGroups = Collections.emptyList();
+        try {
+            userGroups = groupServiceClient.getUserGroups(userId);
+        } catch (Exception e) {
+            log.warn("Failed to fetch user groups for userId={}", userId, e);
+        }
+        Map<Long, GroupResponse> groupMetadata = userGroups.stream()
+                .collect(Collectors.toMap(GroupResponse::getId, g -> g));
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<Long, List<Habit>> entry : habitsByGroup.entrySet()) {
+            Long groupId = entry.getKey();
+            List<Habit> groupHabits = entry.getValue();
+
+            int total = groupHabits.size();
+            List<String> incompleteHabitNames = groupHabits.stream()
+                    .filter(h -> !completedHabitIds.contains(h.getId()))
+                    .map(Habit::getTitle)
+                    .collect(Collectors.toList());
+            int completed = total - incompleteHabitNames.size();
+
+            Map<String, Object> status = new HashMap<>();
+            status.put("totalHabits", total);
+            status.put("completedHabits", completed);
+            status.put("incompleteHabitNames", incompleteHabitNames);
+
+            if (groupId == -1L) {
+                status.put("groupId", null);
+                status.put("groupName", null);
+                status.put("groupNotificationsEnabled", true);
+                status.put("currentStreak", calculateStreak(userId));
+            } else {
+                status.put("groupId", groupId);
+                status.put("currentStreak", calculateGroupStreak(userId, groupId));
+                GroupResponse gRes = groupMetadata.get(groupId);
+                if (gRes != null) {
+                    status.put("groupName", gRes.getName());
+                    status.put("groupNotificationsEnabled", Boolean.TRUE.equals(gRes.getNotificationsEnabled()));
+                } else {
+                    status.put("groupName", "Unknown Group");
+                    status.put("groupNotificationsEnabled", false);
+                }
+            }
+            result.add(status);
+        }
+
+        return result;
     }
 }

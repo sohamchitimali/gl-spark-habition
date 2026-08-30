@@ -10,12 +10,25 @@ const GroupsPage = () => {
   const { userId } = useAuth();
   const [groups, setGroups] = useState<GroupResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
 
   useEffect(() => {
-    getMyGroups()
-      .then(r => setGroups(r.data))
-      .catch(() => { })
-      .finally(() => setLoading(false));
+    const fetchGroups = () => {
+      getMyGroups()
+        .then(r => setGroups(r.data))
+        .catch(() => { })
+        .finally(() => setLoading(false));
+    };
+
+    fetchGroups();
+    const interval = setInterval(fetchGroups, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   if (loading) {
@@ -29,7 +42,7 @@ const GroupsPage = () => {
   return (
     <div className="min-h-screen" style={{ background: '#1a1a18' }}>
       <Navbar />
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8 animate-fade-up">
           <div>
             <h1 className="text-3xl font-bold text-white">My Habit Groups</h1>
@@ -57,7 +70,7 @@ const GroupsPage = () => {
               <p className="text-xs" style={{ color: '#FAECE7' }}>Enter an invite code</p>
             </div>
           </Link>
-          <Link to="/groups/discover"
+          <Link to="/search?tab=groups"
             className="flex items-center justify-center gap-3 p-5 rounded-2xl transition-all hover:opacity-90 no-underline"
             style={{ background: 'linear-gradient(135deg, #1D997C, #30D8A2)', border: '1px solid #30D8A2' }}>
             <span className="text-2xl">🌍</span>
@@ -102,10 +115,18 @@ const GroupsPage = () => {
                           <span className="text-xs" style={{ color: '#B4B2A9' }}>
                             👥 {group.memberIds?.length ?? 1} member{group.memberIds?.length !== 1 ? 's' : ''}
                           </span>
-                          <span className="text-xs px-2 py-0.5 rounded-full font-mono"
-                            style={{ background: 'rgba(83,74,183,0.2)', color: '#AFA9EC' }}>
-                            {group.inviteCode}
-                          </span>
+                          <button
+                            onClick={(e) => { e.preventDefault(); handleCopyCode(group.inviteCode); }}
+                            className="text-xs px-2 py-0.5 rounded-full font-mono relative group/code cursor-pointer hover:bg-opacity-80 transition-all"
+                            style={{ background: 'rgba(83,74,183,0.2)', color: '#AFA9EC' }}
+                          >
+                            {copiedCode === group.inviteCode ? 'Copied!' : group.inviteCode}
+                            {copiedCode !== group.inviteCode && (
+                              <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#363634] text-white text-[9px] px-2 py-1 rounded opacity-0 group-hover/code:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg">
+                                Copy code
+                              </div>
+                            )}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -122,6 +143,29 @@ const GroupsPage = () => {
                       </Link>
                     </div>
                   </div>
+                  
+                  {/* Additional Info Section */}
+                  {(group.description || (group.tags && group.tags.length > 0)) && (
+                    <div className="mt-4 pt-4 border-t border-[#363634]">
+                      {group.description && (
+                        <p className="text-sm text-gray-400 line-clamp-2">{group.description}</p>
+                      )}
+                      {group.tags && group.tags.length > 0 && (
+                        <div className={`flex flex-wrap gap-2 ${group.description ? 'mt-3' : ''}`}>
+                          {group.tags.slice(0, 5).map(tag => (
+                            <span key={tag} className="px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase tracking-wider" style={{ background: 'rgba(83,74,183,0.3)', border: '1px solid rgba(83,74,183,0.5)' }}>
+                              {tag}
+                            </span>
+                          ))}
+                          {group.tags.length > 5 && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold text-gray-400 uppercase tracking-wider" style={{ background: '#363634' }}>
+                              +{group.tags.length - 5}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

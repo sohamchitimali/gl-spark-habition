@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../auth/AuthContext';
 import { createGroup } from '../../api/groupApi';
 import { getFriendships, type FriendshipDto } from '../../api/authApi';
 import { sendMessage } from '../../api/chatApi';
+import Loading from '../../components/Loading';
 import Navbar from '../../components/Navbar';
+import LocationSelector from '../../components/LocationSelector';
 
 const CreateGroupPage = () => {
   const navigate = useNavigate();
@@ -14,18 +17,44 @@ const CreateGroupPage = () => {
   const [months, setMonths] = useState(0);
   const [weeks, setWeeks] = useState(0);
   const [days, setDays] = useState(7);
+  const [isIndefinite, setIsIndefinite] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Location
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [addressDisplay, setAddressDisplay] = useState('');
+
+  // Tags
+  const [tagsInput, setTagsInput] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   
   // Friends inviting
   const [friends, setFriends] = useState<FriendshipDto[]>([]);
   const [selectedFriends, setSelectedFriends] = useState<number[]>([]); // array of friendship IDs to invite
+  
+  // Notification preferences
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   useEffect(() => {
     // Load friends
     getFriendships().then(res => {
       setFriends(res.data.filter(f => f.status === 'ACCEPTED'));
     }).catch(console.error);
+
+    // Auto-fill user's profile location
+    const profileData = localStorage.getItem('profile');
+    if (profileData) {
+      try {
+        const parsed = JSON.parse(profileData);
+        if (parsed.latitude && parsed.longitude) {
+          setLatitude(parsed.latitude);
+          setLongitude(parsed.longitude);
+          setAddressDisplay(parsed.locationDisplay || `${parsed.latitude}, ${parsed.longitude}`);
+        }
+      } catch(e) {}
+    }
   }, []);
 
   const toggleFriend = (friendId: number) => {
@@ -36,13 +65,37 @@ const CreateGroupPage = () => {
     );
   };
 
+  const handleAddTag = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const val = tagsInput.trim().toLowerCase();
+      if (val && !tags.includes(val) && tags.length < 10 && val.length <= 50) {
+        setTags([...tags, val]);
+        setTagsInput('');
+      }
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { setError('Group name is required.'); return; }
+    if (description.length > 1000) { setError('Description cannot exceed 1000 characters.'); return; }
     setLoading(true);
     setError('');
     try {
-      await createGroup(name.trim(), description.trim(), visibility, years, months, weeks, days, selectedFriends);
+      await createGroup(
+        name.trim(), description.trim(), visibility, 
+        isIndefinite ? 0 : years, 
+        isIndefinite ? 0 : months, 
+        isIndefinite ? 0 : weeks, 
+        isIndefinite ? 0 : days, 
+        selectedFriends, latitude, longitude, addressDisplay, tags,
+        notificationsEnabled
+      );
       
       navigate('/groups');
     } catch (err: any) {
@@ -55,10 +108,9 @@ const CreateGroupPage = () => {
   return (
     <div className="min-h-screen" style={{ background: '#1a1a18' }}>
       <Navbar />
-      <div className="max-w-lg mx-auto px-4 py-12">
+      <div className="max-w-3xl mx-auto px-4 py-12">
         <div className="animate-fade-up">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-2 mb-6 text-sm transition-all hover:opacity-70"
-            style={{ color: '#B4B2A9', background: 'none', border: 'none', cursor: 'pointer' }}>
+          <button onClick={() => navigate(-1)} className="inline-flex items-center text-sm text-[#B4B2A9] hover:text-white transition-colors mb-6">
             ← Back
           </button>
           <h1 className="text-3xl font-bold text-white mb-2">Create Habit Group</h1>
@@ -96,12 +148,14 @@ const CreateGroupPage = () => {
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   placeholder="What is this group about?"
-                  rows={3}
+                  rows={6}
+                  maxLength={1000}
                   className="w-full px-4 py-3 rounded-xl text-white outline-none transition-all resize-none"
                   style={{ background: '#363634', border: '1px solid #424240' }}
                   onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
                   onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
                 />
+                <p className="text-xs mt-1 text-right text-[#5F5E5A]">{description.length}/1000</p>
               </div>
 
               <div>
@@ -110,7 +164,14 @@ const CreateGroupPage = () => {
                   value={visibility}
                   onChange={e => setVisibility(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl text-white outline-none transition-all appearance-none cursor-pointer"
-                  style={{ background: '#363634', border: '1px solid #424240' }}
+                  style={{ 
+                    background: '#363634', 
+                    border: '1px solid #424240',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%237F77DD'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, 
+                    backgroundRepeat: 'no-repeat', 
+                    backgroundPosition: 'right 1rem center', 
+                    backgroundSize: '1.2em' 
+                  }}
                   onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
                   onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
                 >
@@ -120,46 +181,117 @@ const CreateGroupPage = () => {
                 </select>
               </div>
 
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Group Location (Optional)</label>
+                    <p className="text-xs text-gray-400 mb-3">Helps local users discover your group.</p>
+                    <div style={{ background: '#222220', padding: '16px', borderRadius: '12px', border: '1px solid #363634' }}>
+                      <LocationSelector
+                        latitude={latitude}
+                        longitude={longitude}
+                        addressDisplay={addressDisplay}
+                        onChange={(lat, lng, address) => {
+                          setLatitude(lat);
+                          setLongitude(lng);
+                          setAddressDisplay(address);
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Tags (Max 10)</label>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {tags.map(tag => (
+                        <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium text-white flex items-center bg-[#534AB7]">
+                          {tag}
+                          <button type="button" onClick={() => removeTag(tag)} className="ml-2 hover:text-red-300">×</button>
+                        </span>
+                      ))}
+                    </div>
+                    {tags.length < 10 && (
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={tagsInput}
+                          onChange={e => setTagsInput(e.target.value)}
+                          onKeyDown={handleAddTag}
+                          maxLength={50}
+                          placeholder="Type a tag and press Enter (e.g. running, coding, reading)"
+                          className="w-full px-4 py-3 rounded-xl text-white outline-none transition-all"
+                          style={{ background: '#363634', border: '1px solid #424240' }}
+                          onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
+                          onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
+                        />
+                        <p className="text-xs mt-1 text-right text-[#5F5E5A]">{tagsInput.length}/50</p>
+                      </div>
+                    )}
+                  </div>
+
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Duration (Leave as 0 for Indefinite)</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Years</label>
-                    <input type="number" min="0" value={years} onChange={e => setYears(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl text-white outline-none transition-all"
-                      style={{ background: '#363634', border: '1px solid #424240' }}
-                      onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
-                      onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Months</label>
-                    <input type="number" min="0" value={months} onChange={e => setMonths(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl text-white outline-none transition-all"
-                      style={{ background: '#363634', border: '1px solid #424240' }}
-                      onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
-                      onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Weeks</label>
-                    <input type="number" min="0" value={weeks} onChange={e => setWeeks(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl text-white outline-none transition-all"
-                      style={{ background: '#363634', border: '1px solid #424240' }}
-                      onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
-                      onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Days</label>
-                    <input type="number" min="0" value={days} onChange={e => setDays(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl text-white outline-none transition-all"
-                      style={{ background: '#363634', border: '1px solid #424240' }}
-                      onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
-                      onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
-                    />
-                  </div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium" style={{ color: '#B4B2A9' }}>Set a timer</label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <span className="text-xs font-semibold" style={{ color: isIndefinite ? '#AFA9EC' : '#5F5E5A' }}>Indefinite Group</span>
+                    <div className="relative inline-block w-10 h-6 select-none transition duration-200 ease-in">
+                      <input type="checkbox" className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 transition-transform duration-200" style={{ transform: isIndefinite ? 'translateX(100%)' : 'translateX(0)', borderColor: isIndefinite ? '#534AB7' : '#424240' }} checked={isIndefinite} onChange={(e) => setIsIndefinite(e.target.checked)} />
+                      <div className="toggle-label block overflow-hidden h-6 rounded-full cursor-pointer transition-colors duration-200" style={{ background: isIndefinite ? '#534AB7' : '#363634' }}></div>
+                    </div>
+                  </label>
                 </div>
+                
+                {!isIndefinite && (
+                  <div className="mb-4 text-xs p-3 rounded-lg border" style={{ background: 'rgba(83, 74, 183, 0.1)', borderColor: 'rgba(83, 74, 183, 0.3)', color: '#AFA9EC' }}>
+                    <span className="font-semibold block mb-1">Global Timezone Alignment:</span>
+                    To ensure fairness across all members globally, the competition always ends exactly at 12:00 UTC on the target date. 
+                    This means the exact time remaining may vary by a few hours from your local time.
+                  </div>
+                )}
+                
+                {!isIndefinite && (
+                  <div className="grid grid-cols-2 gap-3 animate-fade-in">
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Years</label>
+                      <input type="number" min="0" value={years} onChange={e => setYears(Number(e.target.value))}
+                        className="w-full px-3 py-2 rounded-xl text-white outline-none transition-all"
+                        style={{ background: '#363634', border: '1px solid #424240' }}
+                        onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
+                        onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Months</label>
+                      <input type="number" min="0" value={months} onChange={e => setMonths(Number(e.target.value))}
+                        className="w-full px-3 py-2 rounded-xl text-white outline-none transition-all"
+                        style={{ background: '#363634', border: '1px solid #424240' }}
+                        onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
+                        onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Weeks</label>
+                      <input type="number" min="0" value={weeks} onChange={e => setWeeks(Number(e.target.value))}
+                        className="w-full px-3 py-2 rounded-xl text-white outline-none transition-all"
+                        style={{ background: '#363634', border: '1px solid #424240' }}
+                        onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
+                        onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Days</label>
+                      <input type="number" min="0" value={days} onChange={e => setDays(Number(e.target.value))}
+                        className="w-full px-3 py-2 rounded-xl text-white outline-none transition-all"
+                        style={{ background: '#363634', border: '1px solid #424240' }}
+                        onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
+                        onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {!isIndefinite && (
+                  <div className="mt-3 p-3 rounded-lg text-xs" style={{ background: 'rgba(83, 74, 183, 0.1)', color: '#9d96eb', border: '1px solid rgba(83, 74, 183, 0.2)' }}>
+                    <strong>Note:</strong> To ensure fairness across all time zones globally, competition timers end at Midnight (UTC 12:00:00) of your final calendar day. The exact chosen timer won't be perfectly accurate as it is adjusted to take into account the timezones of all users.
+                  </div>
+                )}
               </div>
 
               {/* Invite Friends section */}
@@ -205,6 +337,29 @@ const CreateGroupPage = () => {
                 </p>
               </div>
 
+              {/* Notification Toggle */}
+              <div className="flex items-center justify-between p-4 rounded-xl" style={{ background: '#1a1a18', border: '1px solid #363634' }}>
+                <div>
+                  <p className="text-sm font-semibold text-white">Notification Emails</p>
+                  <p className="text-xs mt-0.5" style={{ color: '#B4B2A9' }}>
+                    Send daily habit reminders to group members
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setNotificationsEnabled(prev => !prev)}
+                  className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                  style={{ background: notificationsEnabled ? '#534AB7' : '#363634' }}
+                  aria-checked={notificationsEnabled}
+                  role="switch"
+                >
+                  <span
+                    className="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                    style={{ transform: notificationsEnabled ? 'translateX(20px)' : 'translateX(0px)' }}
+                  />
+                </button>
+              </div>
+
               <button
                 id="create-group-submit"
                 type="submit"
@@ -216,7 +371,7 @@ const CreateGroupPage = () => {
                   opacity: loading ? 0.7 : 1
                 }}
               >
-                {loading ? 'Creating...' : 'Create Group'}
+                {loading ? <Loading size={5} padding="0" idleColor="transparent" activeColor="#FFF" /> : 'Create Group'}
               </button>
             </form>
           </div>

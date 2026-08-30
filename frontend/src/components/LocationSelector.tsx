@@ -97,6 +97,46 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ latitude, longitude
           >
             {searching ? '...' : 'Search'}
           </button>
+          
+          <button
+            type="button"
+            onClick={() => {
+              if (navigator.geolocation) {
+                setSearching(true);
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                  const lat = position.coords.latitude;
+                  const lng = position.coords.longitude;
+                  try {
+                    // Reverse geocode to get display name
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                    const data = await res.json();
+                    const name = data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                    setQuery(name);
+                    onChange(lat, lng, name);
+                  } catch (err) {
+                    console.error("Reverse geocoding failed", err);
+                    setQuery(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                    onChange(lat, lng, `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                  } finally {
+                    setSearching(false);
+                  }
+                }, (error) => {
+                  console.error("Geolocation failed", error);
+                  setSearching(false);
+                  alert("Unable to retrieve your location. Please check your browser permissions.");
+                });
+              } else {
+                alert("Geolocation is not supported by your browser.");
+              }
+            }}
+            disabled={searching}
+            className="px-4 flex items-center justify-center rounded-xl transition-all hover:bg-gray-700/50 text-gray-300"
+            title="Use my current location"
+            style={{ border: '1px solid #424240' }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+          </button>
+
           {latitude && (
             <button 
                 type="button" 

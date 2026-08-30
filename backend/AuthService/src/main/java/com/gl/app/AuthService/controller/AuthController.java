@@ -76,4 +76,15 @@ public class AuthController {
         }
         return ResponseEntity.ok(results);
     }
+
+    @GetMapping("/users/{userId}/meta")
+    public ResponseEntity<java.util.Map<String, Object>> getUserMeta(@PathVariable Long userId) {
+        return ResponseEntity.ok(userService.getUserMeta(userId));
+    }
+
+    @PostMapping("/users/{userId}/unsubscribe")
+    public ResponseEntity<Void> unsubscribe(@PathVariable Long userId) {
+        userService.unsubscribeUser(userId);
+        return ResponseEntity.ok().build();
+    }
 }

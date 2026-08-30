@@ -1,6 +1,6 @@
 package com.gl.app.HabitService;
 
-import com.gl.app.HabitService.client.CoinServiceClient;
+import com.gl.app.HabitService.client.GroupCoinClient;
 import com.gl.app.HabitService.dto.CompleteHabitResponse;
 import com.gl.app.HabitService.dto.HeatmapResponse;
 import com.gl.app.HabitService.dto.StreakResponse;
@@ -50,7 +50,7 @@ class HabitServiceTest {
     private DailyStreakSnapshotRepository snapshotRepository;
 
     @Mock
-    private CoinServiceClient coinServiceClient;
+    private GroupCoinClient groupCoinClient;
 
     @InjectMocks
     private HabitService habitService;
@@ -85,7 +85,7 @@ class HabitServiceTest {
         assertThat(response.getCurrentStreak()).isEqualTo(1);
         assertThat(response.getCoinsEarned()).isEqualTo(1);
         verify(completionRepository, times(1)).save(any(HabitCompletion.class));
-        verify(coinServiceClient, times(1)).creditCoins(any());
+        verify(groupCoinClient, times(1)).creditCoins(any());
     }
 
     @Test
@@ -106,7 +106,7 @@ class HabitServiceTest {
                 .hasMessageContaining("already completed today");
 
         verify(completionRepository, never()).save(any());
-        verify(coinServiceClient, never()).creditCoins(any());
+        verify(groupCoinClient, never()).creditCoins(any());
     }
 
     @Test

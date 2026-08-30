@@ -6,16 +6,24 @@ export interface GroupResponse {
   memberIds: number[]; adminIds: number[]; habits: GroupHabit[]; 
   description?: string; duration?: string; competitionEndDate?: string;
   visibility?: string; hasPendingRequests?: boolean; currentUserRequested?: boolean;
+  latitude?: number | null; longitude?: number | null; addressDisplay?: string;
+  tags?: string[]; consistencyScore?: number | null;
+  currentGlobalHabitGroupStreak?: number; highestHabitGroupStreak?: number;
+  createdAt?: string; memberCount?: number;
+  notificationsEnabled?: boolean;
 }
 
-export const createGroup = (name: string, description?: string, visibility?: string, years: number = 0, months: number = 0, weeks: number = 0, days: number = 0, inviteFriendIds?: number[]) =>
-  axiosInstance.post<GroupResponse>('/groups', { name, description, visibility, years, months, weeks, days, inviteFriendIds });
+export const createGroup = (name: string, description?: string, visibility?: string, years: number = 0, months: number = 0, weeks: number = 0, days: number = 0, inviteFriendIds?: number[], latitude?: number | null, longitude?: number | null, addressDisplay?: string, tags?: string[], notificationsEnabled: boolean = true) =>
+  axiosInstance.post<GroupResponse>('/groups', { name, description, visibility, years, months, weeks, days, inviteFriendIds, latitude, longitude, addressDisplay, tags, notificationsEnabled });
+
+export const updateGroupSettings = (groupId: number, payload: { name: string; description: string; latitude: number | null; longitude: number | null; addressDisplay: string; tags: string[]; notificationsEnabled?: boolean; }) =>
+  axiosInstance.put<GroupResponse>(`/groups/${groupId}/settings`, payload);
 
 export const getMyGroups = () =>
   axiosInstance.get<GroupResponse[]>('/groups/my-groups');
 
-export const searchGroups = (query: string, userTags: string[], userLat?: number, userLng?: number) =>
-  axiosInstance.post<GroupResponse[]>('/groups/search', { query, userTags, userLat, userLng });
+export const searchGroups = (query: string, userTags: string[], userLat?: number, userLng?: number, radiusKm?: number, sortMode?: string) =>
+  axiosInstance.post<GroupResponse[]>('/groups/search', { query, userTags, userLat, userLng, radiusKm, sortMode });
 
 export const joinGroup = (inviteCode: string) =>
   axiosInstance.post<GroupResponse>('/groups/join', { inviteCode });
@@ -27,6 +35,8 @@ export interface SentJoinRequestResponse {
   id: number;
   groupId: number;
   groupName: string;
+  groupDescription?: string;
+  groupTags?: string[];
   applicantId: number;
   status: string;
   initialMessage: string;
@@ -58,6 +68,12 @@ export const deleteGroup = (groupId: number) =>
 export const leaveGroup = (groupId: number) =>
   axiosInstance.delete(`/groups/${groupId}/members/leave`);
 
+export const kickMember = (groupId: number, targetId: number) =>
+  axiosInstance.delete(`/groups/${groupId}/members/${targetId}/kick`);
+
+export const kickAndBlockMember = (groupId: number, targetId: number) =>
+  axiosInstance.delete(`/groups/${groupId}/members/${targetId}/kickAndBlock`);
+
 // Join Requests API
 export const requestToJoin = (groupId: number, initialMessage: string) =>
   axiosInstance.post(`/groups/${groupId}/join-requests`, { initialMessage });
@@ -76,3 +92,24 @@ export const sendJoinMessage = (groupId: number, requestId: number, content: str
 
 export const getJoinMessages = (groupId: number, requestId: number) =>
   axiosInstance.get(`/groups/${groupId}/join-requests/${requestId}/messages`);
+
+export const blockRequester = (groupId: number, requestId: number) =>
+  axiosInstance.post(`/groups/${groupId}/join-requests/${requestId}/block`);
+
+export const getGroupRequestHistory = (groupId: number) =>
+  axiosInstance.get(`/groups/${groupId}/join-requests/history`);
+
+export const getBlockedGroupUsers = (groupId: number) =>
+  axiosInstance.get(`/groups/${groupId}/join-requests/blocked-users`);
+
+export const unblockGroupUser = (groupId: number, targetUserId: number) =>
+  axiosInstance.post(`/groups/${groupId}/join-requests/unblock/${targetUserId}`);
+
+export const promoteMember = (groupId: number, targetUserId: number) =>
+  axiosInstance.post<GroupResponse>(`/groups/${groupId}/members/${targetUserId}/promote`);
+
+export const demoteMember = (groupId: number, targetUserId: number) =>
+  axiosInstance.post<GroupResponse>(`/groups/${groupId}/members/${targetUserId}/demote`);
+
+export const toggleGroupNotifications = (groupId: number, enabled: boolean) =>
+  axiosInstance.patch<GroupResponse>(`/groups/${groupId}/notifications?enabled=${enabled}`);

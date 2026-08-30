@@ -25,6 +25,11 @@ public class GroupResponse {
     private String visibility;
     private Boolean hasPendingRequests;
     private Boolean currentUserRequested;
+    private Boolean notificationsEnabled;
+    private Double consistencyScore;
+    private Integer currentGlobalHabitGroupStreak;
+    private Integer highestHabitGroupStreak;
+    private LocalDateTime createdAt;
     
     private String description;
     private String duration;

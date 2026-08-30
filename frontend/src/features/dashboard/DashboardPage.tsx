@@ -4,11 +4,16 @@ import { useAuth } from '../../auth/AuthContext';
 import {
   getHabits, createHabit, completeHabit, deleteHabit,
   createTask, toggleTask, deleteTask,
-  getStreak,
-  type Habit, type HabitTask,
+  getStreak, getHeatmap, getPersonalConsistency, type Habit, type HabitTask, type HeatmapDay
 } from '../../api/habitApi';
+import { getUserInsights, type UserInsightDTO } from '../../api/insightsApi';
 import Navbar from '../../components/Navbar';
 import SpinningCoin3D from '../../components/SpinningCoin3D';
+import SpinningFire3D from '../../components/SpinningFire3D';
+import CelebrationModal from '../../components/CelebrationModal';
+import ConsistencyRings, { computeRingsFromHeatmap } from '../../components/ConsistencyRings';
+import { useConfirm } from '../../context/ConfirmContext';
+import confetti from 'canvas-confetti';
 import Loading from '../../components/Loading';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -35,11 +40,17 @@ const ProgressBar = ({ done, total }: { done: number; total: number }) => {
 
 const DashboardPage = () => {
   const { userId } = useAuth();
+  const { confirm } = useConfirm();
 
   // Stats
   const [streak, setStreak] = useState(0);
   const [personalBest, setPersonalBest] = useState(0);
   const [todayEarned, setTodayEarned] = useState(false);
+  const [overallConsistency, setOverallConsistency] = useState<number | null>(null);
+  const [userInsight, setUserInsight] = useState<UserInsightDTO | null>(null);
+
+  // Consistency rings — computed from personal heatmap
+  const [personalHeatmap, setPersonalHeatmap] = useState<Map<string, number>>(new Map());
 
   // Habits
   const [habits, setHabits] = useState<HabitWithTasks[]>([]);
@@ -57,8 +68,8 @@ const DashboardPage = () => {
   // Add task inputs per habit (habitId → input value)
   const [taskInputs, setTaskInputs] = useState<Record<number, string>>({});
 
-  // Coin animation
-  const [showCoinAnimation, setShowCoinAnimation] = useState(false);
+  // Celebration Modal state
+  const [celebration, setCelebration] = useState<{ showCoin: boolean; showFire: boolean; message: string } | null>(null);
 
   // Toast
   const [toast, setToast] = useState<string | null>(null);
@@ -79,14 +90,29 @@ const DashboardPage = () => {
       setPersonalBest(r.data.personalBest);
       setTodayEarned(r.data.todayEarned);
     }).catch(() => { });
+
+    getPersonalConsistency(userId).then(r => {
+      setOverallConsistency(r.data.score);
+    }).catch(() => { });
   };
 
   useEffect(() => {
     if (!userId) return;
     loadStats();
     getHabits(userId).then(r => {
-      setHabits(r.data.map(h => ({ ...h, tasksLoaded: true })));
+      setHabits(r.data.filter(h => !h.groupId).map(h => ({ ...h, tasksLoaded: true })));
     }).catch(() => { }).finally(() => setHabitsLoading(false));
+
+    getUserInsights().then(r => {
+      setUserInsight(r.data);
+    }).catch(() => { });
+
+    // Load personal heatmap for consistency rings
+    getHeatmap(userId).then(r => {
+      const map = new Map<string, number>();
+      (r.data.days as HeatmapDay[]).forEach(d => map.set(d.date, d.completionPercentage));
+      setPersonalHeatmap(map);
+    }).catch(() => { });
 
     const interval = setInterval(() => {
       loadStats();
@@ -151,13 +177,18 @@ const DashboardPage = () => {
 
       const allDone = updatedHabits.every(h => h.completedToday);
 
-      setShowCoinAnimation(true);
-      setTimeout(() => setShowCoinAnimation(false), 2500);
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#26215C', '#534AB7', '#AFA9EC', '#F0997B']
+      });
 
       if (allDone) {
-        showToast(`🎉 All habits done! Streak is now ${res.data.currentStreak} day${res.data.currentStreak !== 1 ? 's' : ''}!`);
+        setCelebration({ showCoin: false, showFire: true, message: `All Habits Done Streak is ${res.data.currentStreak}` });
+        setTimeout(() => setCelebration(null), 3000);
       } else {
-        showToast(`+${res.data.coinsEarned} coins earned!`);
+        showToast(`Habit Completed`);
       }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -168,7 +199,8 @@ const DashboardPage = () => {
   // ─── Delete habit ──────────────────────────────────────────────────────────
 
   const handleDeleteHabit = async (habitId: number) => {
-    if (!window.confirm('Are you sure you want to delete this habit and all its history?')) return;
+    const confirmed = await confirm('Are you sure you want to delete this habit and all its history?', { isDestructive: true });
+    if (!confirmed) return;
     try {
       await deleteHabit(habitId);
       setHabits(prev => prev.filter(h => h.id !== habitId));
@@ -190,7 +222,7 @@ const DashboardPage = () => {
       setNewTitle('');
       setNewDesc('');
       setShowCreateModal(false);
-      showToast('✅ Habit created!');
+      showToast('Habit created!');
     } finally {
       setCreating(false);
     }
@@ -233,36 +265,111 @@ const DashboardPage = () => {
           <h1 className="text-3xl font-bold text-white">{greeting} 👋</h1>
         </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-          {/* Streak */}
-          <div className="col-span-2 rounded-2xl p-5 animate-fade-up delay-100"
-            style={{ background: 'linear-gradient(135deg, #26215C, #534AB7)', border: '1px solid rgba(83,74,183,0.5)' }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium mb-1" style={{ color: '#AFA9EC' }}>
-                  Current streak {todayEarned ? ' (Today: Completed ✅)' : ' (Today: Pending ⏳)'}
-                </p>
-                <p className="text-4xl font-bold text-white">{streak} <span className="text-2xl">🔥</span></p>
-                <p className="text-xs mt-1" style={{ color: '#AFA9EC' }}>Personal best: {personalBest} days</p>
+        {/* Stats + Consistency Rings — unified layout */}
+        <div className="flex flex-col md:flex-row gap-4 mb-8">
+
+          {/* LEFT: streak on top, coins+rank row below */}
+          <div className="flex flex-col gap-4 flex-1">
+
+            {/* Streak */}
+            <div className={`rounded-2xl p-5 transition-all duration-700 ${(todayEarned && habits.length > 0) ? 'animate-border-pulse' : ''}`}
+              style={{
+                background: 'linear-gradient(135deg, #26215C, #534AB7)',
+                border: (todayEarned && habits.length > 0) ? '2px solid #F97316' : '1px solid rgba(83,74,183,0.5)',
+                boxShadow: (todayEarned && habits.length > 0) ? '0 0 0 0 rgba(249, 115, 22, 0.9)' : 'none',
+                animation: (todayEarned && habits.length > 0) ? 'orangePulse 1.8s ease-out infinite' : 'none',
+                filter: (todayEarned && habits.length > 0) ? 'none' : 'grayscale(100%) opacity(70%)'
+              }}>
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium mb-1" style={{ color: '#AFA9EC' }}>Personal Streak</p>
+                  <p className="text-4xl font-bold text-white">{streak} <span className="text-2xl">🔥</span></p>
+                  <p className="text-xs mt-1" style={{ color: '#AFA9EC' }}>Max Streak : {personalBest} days</p>
+                </div>
+                <div className="text-5xl select-none">🔥</div>
               </div>
-              <div className="text-5xl select-none">🔥</div>
+            </div>
+
+            {/* Overall Consistency Card */}
+            {overallConsistency !== null && (
+              <div className="rounded-2xl p-5 animate-fade-up delay-100 flex-1 flex flex-col justify-center"
+                style={{ background: '#2C2C2A', border: '1px solid #363634' }}>
+                <p className="text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Personal Overall Consistency</p>
+                <p className="text-3xl font-bold text-white">
+                  {overallConsistency.toFixed(1)}<span className="text-lg" style={{ color: '#5F5E5A' }}>%</span>
+                </p>
+                <div className="mt-2 h-1.5 rounded-full" style={{ background: '#363634' }}>
+                  <div className="h-full rounded-full transition-all"
+                    style={{ width: `${overallConsistency}%`, background: 'linear-gradient(90deg, #7F77DD, #534AB7)' }} />
+                </div>
+              </div>
+            )}
+
+            {/* Today card below streak */}
+            <div className="rounded-2xl p-5 animate-fade-up delay-200 flex-1"
+              style={{ background: '#2C2C2A', border: '1px solid #363634' }}>
+              <p className="text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Today</p>
+              <p className="text-3xl font-bold text-white">
+                {completedCount}<span className="text-lg" style={{ color: '#5F5E5A' }}>/{habits.length}</span>
+              </p>
+              <div className="mt-2 h-1.5 rounded-full" style={{ background: '#363634' }}>
+                <div className="h-full rounded-full transition-all"
+                  style={{ width: `${completionRate}%`, background: 'linear-gradient(90deg, #7F77DD, #534AB7)' }} />
+              </div>
             </div>
           </div>
 
-          {/* Today */}
-          <div className="rounded-2xl p-5 animate-fade-up delay-200"
-            style={{ background: '#2C2C2A', border: '1px solid #363634' }}>
-            <p className="text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Today</p>
-            <p className="text-3xl font-bold text-white">
-              {completedCount}<span className="text-lg" style={{ color: '#5F5E5A' }}>/{habits.length}</span>
-            </p>
-            <div className="mt-2 h-1.5 rounded-full" style={{ background: '#363634' }}>
-              <div className="h-full rounded-full transition-all"
-                style={{ width: `${completionRate}%`, background: 'linear-gradient(90deg, #7F77DD, #534AB7)' }} />
-            </div>
+          {/* RIGHT: Personal Consistency Rings */}
+          <div className="rounded-2xl p-6 flex flex-col justify-center animate-fade-up delay-300 flex-1"
+            style={{ background: '#2C2C2A', border: '1px solid #363634', minWidth: 0 }}>
+            <p className="text-sm font-semibold mb-5" style={{ color: '#B4B2A9' }}>Personal Consistency Rings</p>
+            <ConsistencyRings
+              {...computeRingsFromHeatmap(personalHeatmap)}
+              size={180}
+            />
           </div>
         </div>
+
+        {/* AI Personal Insights */}
+        {userInsight && (
+          <div className="mb-8 animate-fade-up delay-200">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-3">
+              <span className="text-xl">✨</span> AI Progress Insights
+            </h2>
+            <div className="p-5 rounded-2xl border" style={{ background: 'linear-gradient(145deg, #2C2C2A, #242422)', borderColor: '#363634' }}>
+              <div className="flex flex-col md:flex-row gap-6">
+                {/* Score & Next Milestone */}
+                <div className="flex-1 flex flex-col items-center justify-center gap-2 border-b md:border-b-0 md:border-r border-[#363634] pb-4 md:pb-0 pr-0 md:pr-4">
+                  <p className="text-xs uppercase tracking-wider font-semibold text-center" style={{ color: '#B4B2A9' }}>Consistency Score</p>
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center border-4 border-[#534AB7] bg-[#534AB7]/20 text-[#AFA9EC] shadow-[0_0_15px_rgba(83,74,183,0.3)]">
+                    <span className="text-xl font-bold">{Math.round(userInsight.personalConsistencyScore || 0)}</span>
+                  </div>
+                  <p className="text-xs text-center mt-2 text-white"><span className="text-[#AFA9EC]">🎯 Next Milestone:</span><br />{userInsight.predictedNextMilestone || 'Keep tracking habits!'}</p>
+                </div>
+
+                {/* Achievements & Improvements */}
+                <div className="flex-[2] flex flex-col justify-center text-sm space-y-3">
+                  {(userInsight.recentAchievements || []).length > 0 && (
+                    <div>
+                      <span className="text-green-400 font-semibold mb-1 block">🏆 Recent Achievements:</span>
+                      <ul className="list-disc list-inside text-[#B4B2A9] space-y-1">
+                        {(userInsight.recentAchievements || []).map((ach, idx) => <li key={idx}>{ach}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                  {(userInsight.areasForImprovement || []).length > 0 && (
+                    <div>
+                      <span className="text-[#F0997B] font-semibold mb-1 block">💡 Focus Areas:</span>
+                      <ul className="list-disc list-inside text-[#B4B2A9] space-y-1">
+                        {(userInsight.areasForImprovement || []).map((area, idx) => <li key={idx}>{area}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Habits list */}
         <div className="animate-fade-up delay-200">
@@ -516,13 +623,13 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Show spinning coin on complete */}
-      {showCoinAnimation && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none bg-black/40 backdrop-blur-sm animate-fade-in">
-          <div className="animate-coin-pop" style={{ transform: 'scale(1.5)' }}>
-            <SpinningCoin3D />
-          </div>
-        </div>
+      {/* Show animations on complete */}
+      {celebration && (
+        <CelebrationModal
+          showCoin={celebration.showCoin}
+          showFire={celebration.showFire}
+          message={celebration.message}
+        />
       )}
 
       {/* ── Create Habit Modal ── */}

@@ -16,6 +16,7 @@ public class ProfileDto {
     private Double latitude;
     private Double longitude;
     private String timeZone;
+    private Boolean autoTimezone;
     private String experience;
     private String schedule;
     private String locationVisibility;

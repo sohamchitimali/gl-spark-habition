@@ -78,6 +78,16 @@ public class HabitController {
         return ResponseEntity.ok(habitService.getHabitsForUser(userId));
     }
 
+    @GetMapping("/habits/users/{userId}/completion-status-today")
+    public ResponseEntity<List<java.util.Map<String, Object>>> getCompletionStatusToday(@PathVariable Long userId) {
+        return ResponseEntity.ok(habitService.getCompletionStatusToday(userId));
+    }
+
+    @GetMapping("/habits/users/{userId}/consistency")
+    public ResponseEntity<java.util.Map<String, Object>> getConsistencyStats(@PathVariable Long userId) {
+        return ResponseEntity.ok(habitService.getPersonalOverallConsistency(userId));
+    }
+
     /**
      * Deletes a habit.
      *

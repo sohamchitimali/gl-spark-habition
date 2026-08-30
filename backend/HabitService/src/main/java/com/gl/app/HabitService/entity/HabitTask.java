@@ -30,4 +30,7 @@ public class HabitTask {
     /** Whether this individual task has been completed today. */
     @Column(nullable = false)
     private boolean completed = false;
+
+    /** Tracks the last local date this task was completed, allowing lazy resets. */
+    private java.time.LocalDate lastCompletedDate;
 }

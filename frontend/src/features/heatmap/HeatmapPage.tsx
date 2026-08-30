@@ -11,17 +11,6 @@ const HeatmapPage = () => {
 
   const today = new Date();
 
-  const generateMockData = (): Map<string, number> => {
-    const map = new Map<string, number>();
-    for (let d = 0; d < 365 * 3; d++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - d);
-      const key = date.toISOString().split('T')[0];
-      if (Math.random() > 0.3) map.set(key, Math.ceil(Math.random() * 100)); // percentages up to 100%
-    }
-    return map;
-  };
-
   useEffect(() => {
     if (!userId) return;
     getHeatmap(userId)
@@ -30,7 +19,7 @@ const HeatmapPage = () => {
         r.data.days.forEach((d: HeatmapDay) => map.set(d.date, d.completionPercentage));
         setHeatmapData(map);
       })
-      .catch(() => setHeatmapData(generateMockData()));
+      .catch(() => { /* keep empty map */ });
   }, [userId]);
 
   return (

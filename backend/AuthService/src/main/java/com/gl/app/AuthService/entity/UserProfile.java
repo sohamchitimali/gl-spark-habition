@@ -39,6 +39,11 @@ public class UserProfile {
     @Enumerated(EnumType.STRING)
     private Visibility locationVisibility = Visibility.PUBLIC;
     
+    private String userTheme;
+    
+    @Column(name = "auto_timezone", columnDefinition = "boolean default false")
+    private Boolean autoTimezone = false;
+    
     @ManyToMany
     @JoinTable(
         name = "user_profile_tags",

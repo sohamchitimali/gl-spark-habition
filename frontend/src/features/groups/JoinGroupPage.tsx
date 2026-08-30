@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { joinGroup } from '../../api/groupApi';
 import Navbar from '../../components/Navbar';
+import Loading from '../../components/Loading';
 
 const JoinGroupPage = () => {
   const navigate = useNavigate();
@@ -28,10 +29,9 @@ const JoinGroupPage = () => {
   return (
     <div className="min-h-screen" style={{ background: '#1a1a18' }}>
       <Navbar />
-      <div className="max-w-lg mx-auto px-4 py-12">
+      <div className="max-w-3xl mx-auto px-4 py-12">
         <div className="animate-fade-up">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-2 mb-6 text-sm"
-            style={{ color: '#B4B2A9', background: 'none', border: 'none', cursor: 'pointer' }}>
+          <button onClick={() => navigate(-1)} className="inline-flex items-center text-sm text-[#B4B2A9] hover:text-white transition-colors mb-6">
             ← Back
           </button>
           <h1 className="text-3xl font-bold text-white mb-2">Join a Group</h1>
@@ -66,9 +66,21 @@ const JoinGroupPage = () => {
                 className="w-full py-3 rounded-xl font-semibold text-white transition-all hover:opacity-90 active:scale-95"
                 style={{ background: loading ? '#424240' : 'linear-gradient(135deg, #D85A30, #993C1D)' }}
               >
-                {loading ? 'Joining…' : 'Join Group'}
+                {loading ? <Loading size={5} padding="0" idleColor="transparent" activeColor="#FFF" /> : 'Join Group'}
               </button>
             </form>
+
+            <div className="mt-8 pt-6 text-center" style={{ borderTop: '1px solid #363634' }}>
+              <p className="text-sm mb-4" style={{ color: '#B4B2A9' }}>Don't have an invite code?</p>
+              <button
+                type="button"
+                onClick={() => navigate('/search?tab=groups')}
+                className="w-full py-3 rounded-xl font-semibold transition-all hover:opacity-90 active:scale-95 flex items-center justify-center gap-2"
+                style={{ background: 'rgba(83,74,183,0.15)', color: '#AFA9EC', border: '1px solid rgba(83,74,183,0.3)' }}
+              >
+                Search Public / Open Groups
+              </button>
+            </div>
           </div>
         </div>
       </div>

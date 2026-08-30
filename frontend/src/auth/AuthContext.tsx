@@ -20,10 +20,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const storedUserId = localStorage.getItem('userId');
     const storedToken = localStorage.getItem('accessToken');
     if (storedUserId && storedToken) {
-      setUserId(Number(storedUserId));
+      if (!userId) setUserId(Number(storedUserId));
+      
+      // Auto-timezone check and caching profile
+      import('../api/authApi').then(({ getProfile, updateProfile }) => {
+        getProfile().then(res => {
+          if (res.data) {
+            localStorage.setItem('profile', JSON.stringify(res.data));
+            const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            // Always sync timezone on load
+            if (res.data.timeZone !== localTz) {
+              updateProfile({ ...res.data, timeZone: localTz }).then(() => {
+                // Cascade update to NotificationService
+                import('../api/axiosConfig').then(({ default: axiosInstance }) => {
+                  axiosInstance.get('/notifications/settings', { headers: { 'X-User-Id': storedUserId } })
+                    .then(notifRes => {
+                      if (notifRes.data?.enabled) {
+                        const newSettings = { ...notifRes.data, timezone: localTz };
+                        delete newSettings.enabled; // Not part of the PUT request body
+                        axiosInstance.put('/notifications/settings', newSettings, { headers: { 'X-User-Id': storedUserId } })
+                          .catch(console.error);
+                      }
+                    })
+                    .catch(() => {}); // user might not have notifications set up
+                });
+              }).catch(console.error);
+            }
+          }
+        }).catch(console.error);
+      });
     }
     setIsLoading(false);
-  }, []);
+  }, [userId]);
 
   const persistAuth = (response: AuthResponse) => {
     localStorage.setItem('accessToken', response.accessToken);

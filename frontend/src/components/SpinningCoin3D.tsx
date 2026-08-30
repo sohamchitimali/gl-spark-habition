@@ -30,33 +30,76 @@ const SpinningCoin3D: React.FC = () => {
   });
 
   return (
-    <div className="scene-coin flex items-center justify-center pointer-events-none z-50">
-      <div className="coin-3d relative">
+    <div className="flex items-center justify-center pointer-events-none z-50">
+      <div 
+        className="relative flex items-center justify-center animate-fade-up"
+        style={{
+          width: '200px',
+          height: '200px',
+          animation: 'streak-flame-burst 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both'
+        }}
+      >
+        <div 
+          className="scene-coin"
+          style={{ 
+            filter: 'drop-shadow(0 0 40px rgba(250,214,54,0.7)) drop-shadow(0 0 80px rgba(253,224,71,0.5))',
+            transformOrigin: 'center',
+            animation: 'coin-wobble 2s infinite ease-in-out',
+          }}
+        >
+          <div className="coin-3d relative">
+            {/* Front Face */}
+            <div className="coin-face face-front">
+              <div className="coin-grid-container">
+                <div className="coin-grid-cell"></div><div className="coin-grid-cell"></div><div className="coin-grid-cell"></div>
+                <div className="coin-grid-cell"></div><div className="coin-grid-cell"></div><div className="coin-grid-cell"></div>
+                <div className="coin-grid-cell"></div><div className="coin-grid-cell"></div><div className="coin-grid-cell"></div>
+              </div>
+            </div>
 
-        {/* Front Face */}
-        <div className="coin-face face-front">
-          <div className="coin-grid-container">
-            <div className="coin-grid-cell"></div><div className="coin-grid-cell"></div><div className="coin-grid-cell"></div>
-            <div className="coin-grid-cell"></div><div className="coin-grid-cell"></div><div className="coin-grid-cell"></div>
-            <div className="coin-grid-cell"></div><div className="coin-grid-cell"></div><div className="coin-grid-cell"></div>
+            {/* Back Face */}
+            <div className="coin-face face-back">
+              <div className="coin-grid-container">
+                <div className="coin-grid-cell"></div><div className="coin-grid-cell"></div><div className="coin-grid-cell"></div>
+                <div className="coin-grid-cell"></div><div className="coin-grid-cell"></div><div className="coin-grid-cell"></div>
+                <div className="coin-grid-cell"></div><div className="coin-grid-cell"></div><div className="coin-grid-cell"></div>
+              </div>
+            </div>
+
+            {/* Rim */}
+            <div className="absolute w-full h-full" style={{ transformStyle: 'preserve-3d' }}>
+              {rimStrips}
+            </div>
           </div>
         </div>
-
-        {/* Back Face */}
-        <div className="coin-face face-back">
-          <div className="coin-grid-container">
-            <div className="coin-grid-cell"></div><div className="coin-grid-cell"></div><div className="coin-grid-cell"></div>
-            <div className="coin-grid-cell"></div><div className="coin-grid-cell"></div><div className="coin-grid-cell"></div>
-            <div className="coin-grid-cell"></div><div className="coin-grid-cell"></div><div className="coin-grid-cell"></div>
-          </div>
-        </div>
-
-        {/* Rim */}
-        <div className="absolute w-full h-full" style={{ transformStyle: 'preserve-3d' }}>
-          {rimStrips}
-        </div>
-
       </div>
+
+      <style>{`
+        @keyframes streak-flame-burst {
+          0% {
+            transform: scale(0) translateY(50px);
+            opacity: 0;
+          }
+          40% {
+            transform: scale(1.2) translateY(-20px);
+            opacity: 1;
+          }
+          60% {
+            transform: scale(0.9) translateY(10px);
+          }
+          80% {
+            transform: scale(1.05) translateY(-5px);
+          }
+          100% {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+          }
+        }
+        @keyframes coin-wobble {
+          0%, 100% { transform: scale(0.55) rotate(-5deg); }
+          50% { transform: scale(0.58) rotate(5deg); }
+        }
+      `}</style>
     </div>
   );
 };

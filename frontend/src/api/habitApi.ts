@@ -46,8 +46,20 @@ export const getHeatmap = (userId: number) =>
 export const getGroupHeatmap = (groupId: number) =>
   axiosInstance.get<HeatmapResponse>(`/habits/groups/${groupId}/heatmap`);
 
+export const getUserGroupHeatmap = (groupId: number, userId: number) =>
+  axiosInstance.get<HeatmapResponse>(`/habits/groups/${groupId}/users/${userId}/heatmap`);
+
+export const getPersonalConsistency = (userId: number) =>
+  axiosInstance.get<{ score: number }>(`/habits/consistency/personal?userId=${userId}`);
+
+export const getIndividualGroupConsistency = (groupId: number, userId: number) =>
+  axiosInstance.get<{ score: number }>(`/habits/groups/${groupId}/users/${userId}/consistency`);
+
+export const getGroupOverallConsistency = (groupId: number) =>
+  axiosInstance.get<{ score: number }>(`/habits/groups/${groupId}/consistency/overall`);
+
 export const getStreak = (userId: number) =>
   axiosInstance.get<StreakResponse>(`/users/${userId}/streak`);
 
 export const getGroupStreak = (groupId: number, userId: number) =>
-  axiosInstance.get<StreakResponse>(`/groups/${groupId}/users/${userId}/streak`);
+  axiosInstance.get<StreakResponse>(`/habits/groups/${groupId}/users/${userId}/streak`);
