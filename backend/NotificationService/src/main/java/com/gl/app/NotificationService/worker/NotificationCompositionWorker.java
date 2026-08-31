@@ -1,7 +1,10 @@
 package com.gl.app.NotificationService.worker;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gl.app.NotificationService.client.AuthServiceClient;
 import com.gl.app.NotificationService.client.GeminiClient;
+import com.gl.app.NotificationService.client.GroupServiceClient;
+import com.gl.app.NotificationService.client.HabitServiceClient;
 import com.gl.app.NotificationService.entity.LeaderboardSnapshot;
 import com.gl.app.NotificationService.entity.Notification;
 import com.gl.app.NotificationService.entity.NotificationDelivery;
@@ -50,32 +53,39 @@ public class NotificationCompositionWorker {
     private final RankRecalculationService rankRecalculationService;
     private final GeminiClient geminiClient;
     private final RuleBasedFallbackEngine fallbackEngine;
-    private final RestTemplate restTemplate;
+    private final AuthServiceClient authServiceClient;
+    private final HabitServiceClient habitServiceClient;
+    private final GroupServiceClient groupServiceClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${habit.service.url:http://localhost:8082}")
+    @Value("${habit.service.url}")
     private String habitServiceUrl;
+
+    @Value("${auth.service.url}")
+    private String authServiceUrl;
+
+    @Value("${group.service.url}")
+    private String groupServiceUrl;
+
+    @Value("${api.gateway.url}")
+    private String apiGatewayUrl;
+
+    @Value("${frontend.url}")
+    private String frontendUrl;
 
     @Value("${gemini.unsubscribe.secret:default-dev-secret-key-123456}")
     private String unsubscribeSecret;
-
-    @Value("${auth.service.url:http://localhost:8080}")
-    private String authServiceUrl;
-
-    @Value("${group.service.url:http://localhost:8083}")
-    private String groupServiceUrl;
-
-    @Value("${app.base-url:http://localhost:8081}")
-    private String baseUrl;
 
     @Scheduled(fixedDelayString = "${composition.worker.delay:5000}")
     public void processPendingCompositions() {
         List<Notification> batch = claimBatch();
         if (batch.isEmpty()) return;
 
+        Map<String, Integer> liveScoreCache = new HashMap<>();
+
         for (Notification notification : batch) {
             try {
-                processSingle(notification);
+                processSingle(notification, liveScoreCache);
             } catch (Exception e) {
                 log.error("Failed to compose notification {}", notification.getId(), e);
                 markAsFailed(notification);
@@ -92,7 +102,7 @@ public class NotificationCompositionWorker {
         return notificationRepository.saveAll(pending);
     }
 
-    private void processSingle(Notification notification) {
+    private void processSingle(Notification notification, Map<String, Integer> liveScoreCache) {
         String userId = notification.getUserId();
         log.info("Composing notification {} for user {}", notification.getId(), userId);
 
@@ -191,6 +201,9 @@ public class NotificationCompositionWorker {
             ps.hoursUntilMidnight = hoursUntilDeadline;
             ps.localTimeOfDay = localTimeOfDay;
             ps.currentStreak = (int) personalSource.getOrDefault("currentStreak", 0);
+            if (personalSource.get("mostStruggledHabit") != null) {
+                ps.mostStruggledHabit = (String) personalSource.get("mostStruggledHabit");
+            }
             if (personalSource.get("incompleteHabitNames") != null) {
                 List<String> names = (List<String>) personalSource.get("incompleteHabitNames");
                 ps.habitNames = names.stream().map(n -> n.replace(".", ".&#8203;")).collect(Collectors.toList());
@@ -203,18 +216,30 @@ public class NotificationCompositionWorker {
             String groupName = (String) group.getOrDefault("groupName", "Your Group");
 
             // Own-Stat Patch: fetch live score and patch it into the Cold snapshot
-            int liveScore = fetchLiveGroupScore(userId, groupId);
+            int liveScore = fetchLiveGroupScore(userId, groupId, liveScoreCache);
             List<LeaderboardSnapshot> snapshot = leaderboardSnapshotRepository.findByGroupId(groupId);
-            List<LeaderboardSnapshot> patched = rankRecalculationService.patchAndRecalculate(snapshot, userId, liveScore);
 
             // Find patched rank for this user
-            LeaderboardSnapshot myEntry = patched.stream()
+            LeaderboardSnapshot myEntry = snapshot.stream()
                     .filter(e -> e.getUserId().equals(userId))
                     .findFirst().orElse(null);
+
+            myEntry = rankRecalculationService.patchUserRank(myEntry, liveScore);
 
             int rankTrajectory = 0;
             if (myEntry != null && myEntry.getPreviousRank() != null) {
                 rankTrajectory = myEntry.getPreviousRank() - myEntry.getRank();
+            }
+            
+            Integer pointsToNextRank = null;
+            if (myEntry != null) {
+                final int userScore = myEntry.getScore();
+                pointsToNextRank = snapshot.stream()
+                    .map(LeaderboardSnapshot::getScore)
+                    .filter(score -> score > userScore)
+                    .min(Integer::compare)
+                    .map(nextScore -> nextScore - userScore)
+                    .orElse(null);
             }
 
             GeminiClient.RetentionPromptPayload.GroupSignal gs = new GeminiClient.RetentionPromptPayload.GroupSignal();
@@ -227,6 +252,10 @@ public class NotificationCompositionWorker {
             gs.hoursUntilMidnight = hoursUntilDeadline;
             gs.localTimeOfDay = localTimeOfDay;
             gs.currentStreak = (int) group.getOrDefault("currentStreak", 0);
+            gs.pointsToNextRank = pointsToNextRank;
+            if (group.get("mostStruggledHabit") != null) {
+                gs.mostStruggledHabit = (String) group.get("mostStruggledHabit");
+            }
             if (group.get("incompleteHabitNames") != null) {
                 List<String> names = (List<String>) group.get("incompleteHabitNames");
                 gs.habitNames = names.stream().map(n -> n.replace(".", ".&#8203;")).collect(Collectors.toList());
@@ -234,22 +263,19 @@ public class NotificationCompositionWorker {
             promptPayload.groupSignals.add(gs);
         }
 
-        // --- Step 4: Call Gemini or fall back immediately ---
-        String emailBody;
-        String emailSubject;
+        // --- Step 4: Call Gemini for AI Summary ---
+        String aiSummary = null;
         try {
-            GeminiClient.RetentionInsightResponse insight = geminiClient.generateRetentionInsight(promptPayload);
-            emailSubject = insight.subject != null && !insight.subject.isBlank() 
-                            ? insight.subject 
-                            : "Your habits are waiting for you 🌟";
-            emailBody = stitchEmailBody(insight, promptPayload);
+            aiSummary = geminiClient.generateRetentionInsight(promptPayload);
         } catch (Exception e) {
-            log.warn("Gemini failed for userId {}: {}. Using rule-based fallback.", userId, e.getMessage());
-            emailSubject = "Your habits are waiting for you 🌟";
-            emailBody = buildFallbackEmailBody(promptPayload, userId);
+            log.warn("Gemini failed to generate summary for userId {}: {}", userId, e.getMessage());
         }
 
-        String unsubscribeLink = String.format("http://localhost:8084/notifications/unsubscribe?userId=%s&token=%s", userId, generateUnsubscribeToken(userId));
+        RuleBasedFallbackEngine.EmailContent content = buildUnifiedEmailBody(promptPayload, aiSummary);
+        String emailSubject = content.subject;
+        String emailBody = content.body;
+
+        String unsubscribeLink = String.format("%s/notifications/unsubscribe?userId=%s&token=%s", apiGatewayUrl, userId, generateUnsubscribeToken(userId));
         emailBody = wrapInHtml(emailBody, unsubscribeLink, hoursUntilDeadline);
 
         // --- Step 5: Save delivery atomically ---
@@ -257,25 +283,7 @@ public class NotificationCompositionWorker {
         saveDeliveryAndComplete(notification, payload);
     }
 
-    private String stitchEmailBody(GeminiClient.RetentionInsightResponse insight,
-                                    GeminiClient.RetentionPromptPayload payload) {
-        StringBuilder sb = new StringBuilder();
-
-        if (insight.personalPush != null && !insight.personalPush.isBlank()) {
-            sb.append(insight.personalPush).append("\n\n");
-        }
-
-        for (GeminiClient.RetentionPromptPayload.GroupSignal gs : payload.groupSignals) {
-            String groupMsg = insight.groupPushes.get(gs.groupId);
-            if (groupMsg != null && !groupMsg.isBlank()) {
-                sb.append(groupMsg).append("\n\n");
-            }
-        }
-
-        return sb.toString();
-    }
-
-    private String buildFallbackEmailBody(GeminiClient.RetentionPromptPayload payload, String userId) {
+    private RuleBasedFallbackEngine.EmailContent buildUnifiedEmailBody(GeminiClient.RetentionPromptPayload payload, String aiSummary) {
         String username = payload.username;
         Map<String, Object> personalSignals = null;
         if (payload.personalSignals != null) {
@@ -288,6 +296,7 @@ public class NotificationCompositionWorker {
             personalSignals.put("localTimeOfDay", payload.personalSignals.localTimeOfDay);
             personalSignals.put("currentStreak", payload.personalSignals.currentStreak);
             personalSignals.put("habitNames", payload.personalSignals.habitNames);
+            personalSignals.put("mostStruggledHabit", payload.personalSignals.mostStruggledHabit);
         }
 
         List<Map<String, Object>> groupSignals = payload.groupSignals.stream()
@@ -301,11 +310,13 @@ public class NotificationCompositionWorker {
                     m.put("localTimeOfDay", gs.localTimeOfDay);
                     m.put("currentStreak", gs.currentStreak);
                     m.put("habitNames", gs.habitNames);
+                    m.put("mostStruggledHabit", gs.mostStruggledHabit);
+                    m.put("pointsToNextRank", gs.pointsToNextRank);
                     return m;
                 })
                 .collect(Collectors.toList());
 
-        return fallbackEngine.buildEmailBody(username, personalSignals, groupSignals, userId, "unused");
+        return fallbackEngine.buildEmail(username, personalSignals, groupSignals, aiSummary);
     }
 
     private String wrapInHtml(String contentHtml, String unsubscribeLink, long hoursLeft) {
@@ -314,11 +325,11 @@ public class NotificationCompositionWorker {
         <html>
         <head>
         </head>
-        <body style="margin: 0; padding: 0; background-color: #1a1a1a; background-image: linear-gradient(#1a1a1a, #1a1a1a); font-family: 'Inter', Helvetica, Arial, sans-serif; color: #ffffff;">
-            <table width="100%%" cellpadding="0" cellspacing="0" style="background-color: #1a1a1a; background-image: linear-gradient(#1a1a1a, #1a1a1a); padding: 40px 20px;">
+        <body style="margin: 0; padding: 0; background-color: #1a1a1a; font-family: 'Inter', Helvetica, Arial, sans-serif; color: #ffffff;">
+            <table width="100%%" cellpadding="0" cellspacing="0" style="background-color: #1a1a1a; padding: 40px 20px;">
                 <tr>
                     <td align="center">
-                        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #2C2C2A; background-image: linear-gradient(#2C2C2A, #2C2C2A); border-radius: 16px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.4);">
+                        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #2C2C2A; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.4);">
                             <tr>
                                 <td align="center" style="padding: 40px 20px 20px;">
                                     <table cellpadding="0" cellspacing="0" style="margin-bottom: 20px;">
@@ -326,7 +337,7 @@ public class NotificationCompositionWorker {
                                             <td style="vertical-align: middle;">
                                                 <img src="cid:habition-logo" alt="Habition Logo" height="40" style="display: block;" />
                                             </td>
-                                            <td style="vertical-align: middle; padding-left: 5px;">
+                                            <td style="vertical-align: middle; padding-left: 0px;">
                                                 <span style="color: #ffffff; font-size: 28px; font-weight: bold; letter-spacing: -0.5px; line-height: 40px; display: inline-block;">Habition</span>
                                             </td>
                                         </tr>
@@ -348,11 +359,11 @@ public class NotificationCompositionWorker {
                             </tr>
                             <tr>
                                 <td align="center" style="padding: 0 40px 40px;">
-                                    <a href="http://localhost:5173/dashboard" style="display: inline-block; background-color: #D0FD3E; background-image: linear-gradient(#D0FD3E, #D0FD3E); color: #1a1a1a; font-weight: 700; font-size: 16px; text-decoration: none; padding: 14px 32px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Complete Habits Now</a>
+                                    <a href="%s/dashboard" style="display: inline-block; background-color: #D0FD3E; color: #1a1a1a; font-weight: 700; font-size: 16px; text-decoration: none; padding: 14px 32px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Complete Habits Now</a>
                                 </td>
                             </tr>
                             <tr>
-                                <td align="center" style="padding: 14px 0 22px 0; background-color: #222220; background-image: linear-gradient(#222220, #222220); text-align: center; vertical-align: middle;">
+                                <td align="center" style="padding: 14px 0 22px 0; background-color: #222220; text-align: center; vertical-align: middle;">
                                     <a href="%s" style="color: #666666; font-size: 12px; line-height: 1; text-decoration: underline; margin: 0; display: inline-block;">Unsubscribe from these emails</a>
                                 </td>
                             </tr>
@@ -362,7 +373,7 @@ public class NotificationCompositionWorker {
             </table>
         </body>
         </html>
-        """.formatted(hoursLeft, contentHtml.replace("\n", "<br>"), hoursLeft, unsubscribeLink);
+        """.formatted(hoursLeft, contentHtml.replace("\n", "<br>"), hoursLeft, frontendUrl, unsubscribeLink);
     }
 
     private String buildEmailPayload(String toEmail, String subject, String body, String userId) {
@@ -434,7 +445,7 @@ public class NotificationCompositionWorker {
 
     private Map<String, Object> fetchUserMeta(String userId) {
         try {
-            return restTemplate.getForObject(authServiceUrl + "/auth/users/" + userId + "/meta", Map.class);
+            return authServiceClient.getUserMeta(userId);
         } catch (Exception e) {
             log.error("Failed to fetch user meta for userId {}", userId, e);
             return null;
@@ -448,11 +459,7 @@ public class NotificationCompositionWorker {
      */
     private List<Map<String, Object>> fetchSourceCompletionStatus(String userId) {
         try {
-            Map[] result = restTemplate.getForObject(
-                    habitServiceUrl + "/habits/users/" + userId + "/completion-status-today",
-                    Map[].class
-            );
-            return result != null ? Arrays.asList(result) : Collections.emptyList();
+            return habitServiceClient.getCompletionStatusToday(userId);
         } catch (Exception e) {
             log.error("Failed to fetch completion status for userId {}", userId, e);
             return null;
@@ -461,10 +468,7 @@ public class NotificationCompositionWorker {
 
     private Map<String, Object> fetchPersonalConsistencyStats(String userId) {
         try {
-            Map result = restTemplate.getForObject(
-                    habitServiceUrl + "/habits/users/" + userId + "/consistency",
-                    Map.class
-            );
+            Map<String, Object> result = habitServiceClient.getPersonalConsistency(userId);
             return result != null ? result : Collections.emptyMap();
         } catch (Exception e) {
             log.warn("Failed to fetch consistency stats for userId {}, using zeros", userId, e);
@@ -472,15 +476,29 @@ public class NotificationCompositionWorker {
         }
     }
 
-    private int fetchLiveGroupScore(String userId, String groupId) {
+    private int fetchLiveGroupScore(String userId, String groupId, Map<String, Integer> liveScoreCache) {
+        String cacheKey = userId + ":" + groupId;
+        if (liveScoreCache.containsKey(cacheKey)) {
+            return liveScoreCache.get(cacheKey);
+        }
+
         try {
-            Map result = restTemplate.getForObject(
-                    groupServiceUrl + "/groups/" + groupId + "/members/" + userId + "/score",
-                    Map.class
-            );
-            return result != null ? (int) result.getOrDefault("coins", 0) : 0;
+            Map<String, Object> result = groupServiceClient.getLeaderboard(groupId);
+            int score = 0;
+            if (result != null && result.containsKey("entries")) {
+                java.util.List<Map<String, Object>> entries = (java.util.List<Map<String, Object>>) result.get("entries");
+                for (Map<String, Object> entry : entries) {
+                    if (String.valueOf(entry.get("userId")).equals(userId)) {
+                        score = ((Number) entry.getOrDefault("totalCoins", 0)).intValue();
+                        break;
+                    }
+                }
+            }
+            liveScoreCache.put(cacheKey, score);
+            return score;
         } catch (Exception e) {
             log.warn("Failed to fetch live score for userId {} in group {}, using 0", userId, groupId, e);
+            liveScoreCache.put(cacheKey, 0);
             return 0;
         }
     }

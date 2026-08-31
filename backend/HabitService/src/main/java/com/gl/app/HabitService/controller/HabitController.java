@@ -83,9 +83,20 @@ public class HabitController {
         return ResponseEntity.ok(habitService.getCompletionStatusToday(userId));
     }
 
-    @GetMapping("/habits/users/{userId}/consistency")
-    public ResponseEntity<java.util.Map<String, Object>> getConsistencyStats(@PathVariable Long userId) {
+    @GetMapping("/habits/consistency/personal")
+    public ResponseEntity<java.util.Map<String, Object>> getConsistencyStats(@RequestParam("userId") Long userId) {
         return ResponseEntity.ok(habitService.getPersonalOverallConsistency(userId));
+    }
+
+    @GetMapping("/habits/groups/{groupId}/consistency/overall")
+    public ResponseEntity<java.util.Map<String, Object>> getGroupOverallConsistency(@PathVariable Long groupId) {
+        return ResponseEntity.ok(habitService.getGroupOverallConsistency(groupId));
+    }
+
+    @GetMapping("/habits/groups/{groupId}/users/{userId}/consistency")
+    public ResponseEntity<java.util.Map<String, Object>> getIndividualGroupConsistency(
+            @PathVariable Long groupId, @PathVariable Long userId) {
+        return ResponseEntity.ok(habitService.getIndividualGroupConsistency(groupId, userId));
     }
 
     /**

@@ -554,6 +554,21 @@ public class HabitService {
         List<HabitCompletion> completionsToday = completionRepository.findByUserIdAndCompletionDate(userId, today);
         Set<Long> completedHabitIds = completionsToday.stream().map(HabitCompletion::getHabitId).collect(Collectors.toSet());
 
+        List<Long> incompleteHabitIds = habits.stream()
+                .map(Habit::getId)
+                .filter(id -> !completedHabitIds.contains(id))
+                .collect(Collectors.toList());
+
+        Map<Long, Long> completionCounts = new HashMap<>();
+        if (!incompleteHabitIds.isEmpty()) {
+            List<Object[]> batchedCounts = completionRepository.countCompletionsByHabitIds(incompleteHabitIds);
+            for (Object[] row : batchedCounts) {
+                Long habitId = ((Number) row[0]).longValue();
+                Long count = ((Number) row[1]).longValue();
+                completionCounts.put(habitId, count);
+            }
+        }
+
         // Group by groupId (null = personal)
         Map<Long, List<Habit>> habitsByGroup = habits.stream()
                 .collect(Collectors.groupingBy(h -> h.getGroupId() == null ? -1L : h.getGroupId()));
@@ -574,16 +589,27 @@ public class HabitService {
             List<Habit> groupHabits = entry.getValue();
 
             int total = groupHabits.size();
-            List<String> incompleteHabitNames = groupHabits.stream()
-                    .filter(h -> !completedHabitIds.contains(h.getId()))
-                    .map(Habit::getTitle)
-                    .collect(Collectors.toList());
+            List<String> incompleteHabitNames = new ArrayList<>();
+            String mostStruggledHabit = null;
+            long lowestCompletions = Long.MAX_VALUE;
+
+            for (Habit h : groupHabits) {
+                if (!completedHabitIds.contains(h.getId())) {
+                    incompleteHabitNames.add(h.getTitle());
+                    long count = completionCounts.getOrDefault(h.getId(), 0L);
+                    if (count < lowestCompletions) {
+                        lowestCompletions = count;
+                        mostStruggledHabit = h.getTitle();
+                    }
+                }
+            }
             int completed = total - incompleteHabitNames.size();
 
             Map<String, Object> status = new HashMap<>();
             status.put("totalHabits", total);
             status.put("completedHabits", completed);
             status.put("incompleteHabitNames", incompleteHabitNames);
+            status.put("mostStruggledHabit", mostStruggledHabit);
 
             if (groupId == -1L) {
                 status.put("groupId", null);

@@ -50,4 +50,10 @@ public interface HabitCompletionRepository extends JpaRepository<HabitCompletion
 
     /** Deletes all completion records for a habit. */
     void deleteByHabitId(Long habitId);
+
+    /** Counts total completions for a specific habit. */
+    long countByHabitId(Long habitId);
+
+    @Query("SELECT hc.habitId, COUNT(hc) FROM HabitCompletion hc WHERE hc.habitId IN :habitIds GROUP BY hc.habitId")
+    List<Object[]> countCompletionsByHabitIds(@Param("habitIds") List<Long> habitIds);
 }

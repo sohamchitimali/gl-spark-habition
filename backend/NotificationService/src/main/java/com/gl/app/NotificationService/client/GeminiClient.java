@@ -61,6 +61,7 @@ public class GeminiClient {
             public long hoursUntilMidnight;
             public String localTimeOfDay;
             public int currentStreak;
+            public String mostStruggledHabit;
             public List<String> habitNames = new ArrayList<>();
         }
 
@@ -70,77 +71,42 @@ public class GeminiClient {
             public int incompleteCount;
             /** Positive = moved up ranks, negative = dropped, 0 = no change */
             public int rankTrajectory;
-            public Integer currentRank;
+            public int currentRank;
+            public Integer pointsToNextRank;
             public long hoursUntilMidnight;
             public String localTimeOfDay;
             public int currentStreak;
+            public String mostStruggledHabit;
             public List<String> habitNames = new ArrayList<>();
         }
     }
 
     /**
-     * The structured JSON output from Gemini.
-     */
-    public static class RetentionInsightResponse {
-        /** The dynamic email subject line */
-        public String subject;
-        
-        /** Personal habits section. Null if personalSignals were null. */
-        public String personalPush;
-
-        /**
-         * Per-group push messages keyed by groupId.
-         * Only contains entries for groups that had incomplete habits.
-         */
-        public Map<String, String> groupPushes = new HashMap<>();
-    }
-
-    /**
-     * Asks Gemini to generate a structured retention email JSON.
+     * Asks Gemini to generate a short motivational summary.
      *
      * @param payload The signal data for this user's cycle.
-     * @return Parsed RetentionInsightResponse from Gemini's JSON output.
-     * @throws RuntimeException if Gemini times out, rate-limits, or returns malformed JSON.
-     *                          The caller must immediately fall back to RuleBasedFallbackEngine.
+     * @return A plain text string containing the AI summary.
+     * @throws RuntimeException if Gemini times out or rate-limits.
      */
-    public RetentionInsightResponse generateRetentionInsight(RetentionPromptPayload payload) {
+    public String generateRetentionInsight(RetentionPromptPayload payload) {
         String promptText = buildPrompt(payload);
         String systemInstruction = """
-                You are a concise, friendly habit coach writing retention emails.
-                You MUST respond with ONLY a valid JSON object, with NO markdown, NO backticks, NO explanation.
-                The JSON must have this exact shape:
-                {
-                  "subject": "string (A catchy, motivating 3-6 word email subject)",
-                  "personalPush": "string or null",
-                  "groupPushes": { "groupId": "string", ... }
-                }
-                Be specific and motivating. Encourage the user to maintain their position or complete habits to try and reach a higher position. Do not call out specific rivals or use negative shame.
-                Important formatting rules: 
-                - The output MUST use basic HTML tags (like <strong>, <em>, <br>, <ul>, <li>).
-                - Address the user by their name (e.g., 'Hi [Name]') without a comma.
-                - Format any lists of habits as an HTML unordered list (<ul><li>) instead of inline commas.
-                - DO NOT wrap habit names or group names in quotation marks.
-                - DO NOT include phrases like 'Complete them in the next X hours' in individual messages; a global footer will handle this.
-                - DO NOT mention weekly, monthly, or yearly consistency.
-                - DO NOT use any emojis.
-                - When rank trajectory is provided (e.g. moved up or dropped), you MUST explicitly mention it to encourage the user.
-                - DO NOT wrap the JSON inside markdown blocks.
-                Keep each message under 3 sentences (excluding lists). Do not hallucinate any data not provided.
+                You are a concise, friendly habit coach. The user is receiving their daily reminder email about their incomplete habits.
+                Based on the provided data, write a short, motivational 2-3 sentence summary to place at the very top of the email.
+                - Do NOT include any greetings like "Hi [Name]" (this is handled by the template).
+                - Do NOT list the habits or groups (the template does this).
+                - Just provide the pure motivational text.
+                - Keep it encouraging. If they have a high streak, praise it. If they are struggling, encourage them gently.
+                - Do NOT use emojis.
+                - Do NOT output JSON, just plain text.
                 """;
 
         String rawResponse = callGeminiApi(promptText, systemInstruction);
-
-        try {
-            // Strip any accidental markdown fences if present
-            String cleaned = rawResponse
-                    .replaceAll("(?s)```json\\s*", "")
-                    .replaceAll("(?s)```\\s*", "")
-                    .trim();
-            return objectMapper.readValue(cleaned, RetentionInsightResponse.class);
-        } catch (Exception e) {
-            log.error("Gemini returned malformed JSON, falling back to rule engine. Raw: {}", rawResponse);
-            throw new RuntimeException("Gemini JSON parse failure", e);
+        if (rawResponse == null || rawResponse.trim().isEmpty()) {
+            throw new RuntimeException("Gemini returned empty response");
         }
+        
+        return rawResponse.trim();
     }
 
     private String buildPrompt(RetentionPromptPayload payload) {
@@ -152,11 +118,14 @@ public class GeminiClient {
             String namesStr = ps.habitNames != null && !ps.habitNames.isEmpty() 
                     ? ": '" + String.join("', '", ps.habitNames) + "'" 
                     : "";
+            String struggleStr = ps.mostStruggledHabit != null && !ps.mostStruggledHabit.isEmpty()
+                    ? ". Most struggled habit: '" + ps.mostStruggledHabit + "'"
+                    : "";
             sb.append(String.format(
                     "Personal habits: %d incomplete%s. Current streak: %d days. Weekly consistency: %.1f%%, Monthly: %.1f%%, Yearly: %.1f%%. " +
-                    "Local time of day is %s (%d hours until midnight).\n",
+                    "Local time of day is %s (%d hours until midnight)%s.\n",
                     ps.incompleteCount, namesStr, ps.currentStreak, ps.weeklyConsistency, ps.monthlyConsistency, ps.yearlyConsistency,
-                    ps.localTimeOfDay, ps.hoursUntilMidnight
+                    ps.localTimeOfDay, ps.hoursUntilMidnight, struggleStr
             ));
         } else {
             sb.append("Personal habits: all complete (omit personalPush from response, set it to null).\n");
@@ -173,9 +142,15 @@ public class GeminiClient {
                 String namesStr = gs.habitNames != null && !gs.habitNames.isEmpty() 
                         ? ": '" + String.join("', '", gs.habitNames) + "'" 
                         : "";
+                String struggleStr = gs.mostStruggledHabit != null && !gs.mostStruggledHabit.isEmpty()
+                        ? ". Most struggled habit: '" + gs.mostStruggledHabit + "'"
+                        : "";
+                String pointsStr = gs.pointsToNextRank != null
+                        ? ". Points to next rank: " + gs.pointsToNextRank
+                        : "";
                 sb.append(String.format(
-                        "- Group '%s' (id: %s): %d incomplete habit(s)%s. Current group streak: %d days. Current rank: %d. Rank trajectory: %s. Local time: %s (%d hrs until midnight).\n",
-                        gs.groupName, gs.groupId, gs.incompleteCount, namesStr, gs.currentStreak, gs.currentRank, trajectory, gs.localTimeOfDay, gs.hoursUntilMidnight
+                        "- Group '%s' (id: %s): %d incomplete habit(s)%s. Current group streak: %d days. Current rank: %d. Rank trajectory: %s. Local time: %s (%d hrs until midnight)%s%s.\n",
+                        gs.groupName, gs.groupId, gs.incompleteCount, namesStr, gs.currentStreak, gs.currentRank, trajectory, gs.localTimeOfDay, gs.hoursUntilMidnight, struggleStr, pointsStr
                 ));
             }
         }

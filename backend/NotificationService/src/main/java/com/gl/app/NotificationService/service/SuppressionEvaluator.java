@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import com.gl.app.NotificationService.client.HabitServiceClient;
 
 import java.util.Arrays;
 import java.util.List;
@@ -34,10 +34,7 @@ import java.util.Map;
 @Slf4j
 public class SuppressionEvaluator {
 
-    private final RestTemplate restTemplate;
-
-    @Value("${habit.service.url:http://localhost:8082}")
-    private String habitServiceUrl;
+    private final HabitServiceClient habitServiceClient;
 
     /**
      * Result of suppression evaluation.
@@ -135,11 +132,7 @@ public class SuppressionEvaluator {
      */
     private List<Map<String, Object>> fetchSourceCompletionStatus(String userId) {
         try {
-            Map[] result = restTemplate.getForObject(
-                    habitServiceUrl + "/habits/users/" + userId + "/completion-status-today",
-                    Map[].class
-            );
-            return result != null ? Arrays.asList(result) : java.util.Collections.emptyList();
+            return habitServiceClient.getCompletionStatusToday(userId);
         } catch (Exception e) {
             log.error("Failed to fetch completion status for userId {}: {}", userId, e.getMessage());
             return null;

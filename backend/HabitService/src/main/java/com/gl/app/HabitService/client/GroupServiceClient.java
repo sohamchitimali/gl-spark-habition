@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.List;
 
-@FeignClient(name = "GROUP-SERVICE", contextId = "groupServiceClient")
+@FeignClient(name = "GROUP-SERVICE", contextId = "groupServiceClient", fallback = GroupServiceClientFallback.class)
 public interface GroupServiceClient {
 
     @GetMapping("/groups/my-groups")

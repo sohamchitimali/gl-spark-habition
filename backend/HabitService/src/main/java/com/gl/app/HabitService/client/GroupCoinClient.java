@@ -5,7 +5,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(name = "GROUP-SERVICE", contextId = "groupCoinClient")
+@FeignClient(name = "GROUP-SERVICE", contextId = "groupCoinClient", fallback = GroupCoinClientFallback.class)
 public interface GroupCoinClient {
 
     @PostMapping("/coins/credit")

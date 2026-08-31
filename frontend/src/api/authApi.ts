@@ -21,13 +21,13 @@ export interface Profile {
 }
 
 export const sendOtp = (email: string) =>
-  axios.post('http://localhost:8080/auth/send-otp', { email });
+  axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/auth/send-otp`, { email });
 
 export const register = (data: AuthRequest) =>
   axiosInstance.post<AuthResponse>('/auth/register', data);
 
 export const checkUsername = (username: string, sessionId?: string) => {
-  let url = `http://localhost:8080/auth/check-username?username=${encodeURIComponent(username)}`;
+  let url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/auth/check-username?username=${encodeURIComponent(username)}`;
   if (sessionId) {
     url += `&sessionId=${encodeURIComponent(sessionId)}`;
   }
@@ -65,10 +65,10 @@ export const removeFriend = (friendshipId: number) => axiosInstance.delete(`/aut
 
 // Password Management
 export const forgotPassword = (email: string) =>
-  axios.post('http://localhost:8080/auth/forgot-password', { email });
+  axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/auth/forgot-password`, { email });
 
 export const resetPassword = (email: string, otp: string, newPassword: string) =>
-  axios.post('http://localhost:8080/auth/reset-password', { email, otp, newPassword });
+  axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/auth/reset-password`, { email, otp, newPassword });
 
 export const changePassword = (currentPassword: string, newPassword: string) =>
   axiosInstance.put('/auth/users/me/password', { currentPassword, newPassword });

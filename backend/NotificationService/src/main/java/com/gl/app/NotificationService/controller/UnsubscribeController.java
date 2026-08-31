@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
+import com.gl.app.NotificationService.client.AuthServiceClient;
 
 import java.util.Base64;
 
@@ -27,13 +27,13 @@ import java.util.Base64;
 public class UnsubscribeController {
 
     private final NotificationScheduleService scheduleService;
-    private final RestTemplate restTemplate;
+    private final AuthServiceClient authServiceClient;
 
-    @Value("${auth.service.url:http://localhost:8080}")
-    private String authServiceUrl;
+    @Value("${api.gateway.url}")
+    private String apiGatewayUrl;
 
-    @Value("${app.base-url:http://localhost:8081}")
-    private String baseUrl;
+    @Value("${frontend.url}")
+    private String frontendUrl;
 
     /**
      * GET confirmation page (RFC 8058 Step 1).
@@ -77,7 +77,7 @@ public class UnsubscribeController {
                     </div>
                 </body>
                 </html>
-                """.formatted(baseUrl, userId, token);
+                """.formatted(apiGatewayUrl, userId, token);
 
         return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);
     }
@@ -105,10 +105,7 @@ public class UnsubscribeController {
             }
 
             // Disable email notifications in AuthService
-            restTemplate.postForEntity(
-                    authServiceUrl + "/auth/users/" + userId + "/unsubscribe",
-                    null, Void.class
-            );
+            authServiceClient.unsubscribeUser(userId);
 
             // Cascade-cancel the notification schedule
             scheduleService.cancelScheduleForUser(userId);
@@ -119,7 +116,7 @@ public class UnsubscribeController {
                     <p>You won't receive any more habit reminders from Habition.</p>
                     <p>You can re-enable emails anytime from your <a href="%s/profile">profile settings</a>.</p>
                     </body></html>
-                    """.formatted(baseUrl.replace(":8081", ":5173")));
+                    """.formatted(frontendUrl));
         } catch (Exception e) {
             log.error("Failed to process unsubscribe for userId {}", userId, e);
             return ResponseEntity.internalServerError()

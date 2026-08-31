@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
+import com.gl.app.NotificationService.client.HabitServiceClient;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -53,11 +53,8 @@ import java.util.Optional;
 public class ConsistencySnapshotJob {
 
     private final ConsistencyStatsRepository consistencyStatsRepository;
-    private final RestTemplate restTemplate;
+    private final HabitServiceClient habitServiceClient;
     private final JobScheduler jobScheduler;
-
-    @Value("${habit.service.url:http://localhost:8082}")
-    private String habitServiceUrl;
 
     /**
      * Spring cron triggers this at noon UTC daily.
@@ -124,21 +121,16 @@ public class ConsistencySnapshotJob {
      */
     private double fetchDayCompletionPercentage(ConsistencyStats stats, LocalDate date) {
         try {
-            String url;
+            Map<String, Object> result;
+            String dateStr = date.toString();
             if ("PERSONAL".equals(stats.getScope())) {
-                url = habitServiceUrl + "/habits/users/" + stats.getEntityId()
-                        + "/daily-completion?date=" + date;
+                result = habitServiceClient.getPersonalDailyCompletion(stats.getEntityId(), dateStr);
             } else if ("GROUP_MEMBER".equals(stats.getScope())) {
-                url = habitServiceUrl + "/habits/users/" + stats.getMemberId()
-                        + "/group/" + stats.getEntityId()
-                        + "/daily-completion?date=" + date;
+                result = habitServiceClient.getGroupMemberDailyCompletion(stats.getMemberId(), stats.getEntityId(), dateStr);
             } else {
                 // GROUP_GLOBAL: fetch group-wide average from GroupService
-                url = habitServiceUrl + "/habits/groups/" + stats.getEntityId()
-                        + "/daily-completion?date=" + date;
+                result = habitServiceClient.getGroupDailyCompletion(stats.getEntityId(), dateStr);
             }
-
-            Map result = restTemplate.getForObject(url, Map.class);
             if (result != null && result.containsKey("completionPercentage")) {
                 Object val = result.get("completionPercentage");
                 return val instanceof Number ? ((Number) val).doubleValue() : 0.0;

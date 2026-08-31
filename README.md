@@ -27,41 +27,74 @@ Habition is a gamified, social habit-tracking application designed to help users
 - **Database**: PostgreSQL
 - **Search Engine**: Meilisearch
 
-## Getting Started
+## Getting Started (For Beginners)
 
-1. **Setup Meilisearch**:
-   Download and start Meilisearch locally. We have provided setup scripts that will automatically download the correct executable for your operating system into a `meilisearch/` folder.
+To run Habition on your local machine, you need to set up Meilisearch (our search engine), the Backend (Java/Spring Boot), and the Frontend (React).
 
-   **Windows**:
-   ```bash
-   .\setup-meilisearch.bat
+### 1. Setup Environment Variables
+First, you need to create an environment file in the backend directory. This file will store your secret keys and database configurations.
+1. Navigate to the `backend` folder.
+2. Create a new file named `.env`.
+3. Add the following required variables to your `.env` file:
+   ```env
+   # Database connection
+   DB_URL=jdbc:postgresql://localhost:5432/habition_users
+   DB_USERNAME=postgres
+   DB_PASSWORD=your_postgres_password
+   
+   # JWT Secret (Any secure random string)
+   JWT_SECRET=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+   
+   # Mail Configurations (Needed for OTP emails)
+   SPRING_MAIL_USERNAME=your_email@gmail.com
+   SPRING_MAIL_PASSWORD=your_app_password
+   
+   # Meilisearch Setup (Mandatory)
+   MEILISEARCH_HOST=http://localhost:7700
+   MEILISEARCH_API_KEY=your_meilisearch_master_key
    ```
-   **Mac/Linux**:
-   ```bash
-   chmod +x setup-meilisearch.sh
-   ./setup-meilisearch.sh
-   ```
+*(You will get the `MEILISEARCH_API_KEY` in the next step.)*
 
-   Then, open a terminal in the new `meilisearch` directory and start it with the master key:
-   ```bash
-   cd meilisearch
-   ./meilisearch --master-key SBRmZ0tKs_Y1i3gQgH1aIZ6YI0LRojaqjSCI2yjUD-8
-   ```
+### 2. Setup Meilisearch
+Meilisearch is mandatory for the app's advanced discovery features. We have provided setup scripts that will automatically download the correct executable for your operating system into a `meilisearch/` folder.
 
-2. **Run Backend Services**:
-   Navigate to the backend directory and run the initialization script.
-   ```bash
-   cd backend
-   ./start-services.bat
-   ```
+**Windows**:
+```bash
+.\setup-meilisearch.bat
+```
+**Mac/Linux**:
+```bash
+chmod +x setup-meilisearch.sh
+./setup-meilisearch.sh
+```
 
-3. **Run Frontend App**:
-   Start the Vite development server.
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
+**Starting Meilisearch:**
+After running the script, a new folder named `meilisearch` will be created. You must navigate into it and start the engine:
+```bash
+cd meilisearch
+# For Windows:
+.\meilisearch.exe --master-key SBRmZ0tKs_Y1i3gQgH1aIZ6YI0LRojaqjSCI2yjUD-8
+
+# For Mac/Linux:
+./meilisearch --master-key SBRmZ0tKs_Y1i3gQgH1aIZ6YI0LRojaqjSCI2yjUD-8
+```
+> **IMPORTANT:** When you start Meilisearch, it will display a master key (or you can use the one passed in the command above). Make sure you copy this key and set it as `MEILISEARCH_API_KEY` in your `backend/.env` file!
+
+### 3. Run Backend Services
+Next, you need to start the Java microservices. Open a **new terminal window** (keep Meilisearch running in the other one) and run:
+```bash
+cd backend
+.\start-services.bat   # For Windows
+./start-services.sh    # For Mac/Linux
+```
+
+### 4. Run Frontend App
+Finally, start the React application. Open another **new terminal window** and run:
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ## Architecture highlights
 
