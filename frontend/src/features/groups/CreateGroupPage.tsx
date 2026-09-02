@@ -80,7 +80,7 @@ const CreateGroupPage = () => {
     setTags(tags.filter(t => t !== tagToRemove));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!name.trim()) { setError('Group name is required.'); return; }
     if (description.length > 1000) { setError('Description cannot exceed 1000 characters.'); return; }

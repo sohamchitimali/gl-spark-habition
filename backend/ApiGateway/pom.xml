@@ -15,9 +15,9 @@
 	</parent>
 
 	<groupId>com.example</groupId>
-	<artifactId>api-gateway</artifactId>
+	<artifactId>ApiGateway</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>api-gateway</name>
+	<name>ApiGateway</name>
 	<description>Spring Cloud API Gateway</description>
 
 	<properties>

@@ -10,7 +10,7 @@ const JoinGroupPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!code.trim()) { setError('Please enter an invite code.'); return; }
     setLoading(true);

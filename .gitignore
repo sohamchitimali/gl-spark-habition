@@ -1,5 +1,8 @@
+.vscode
 .idea
 .gitignore
-meilisearch/
 
-backend/.env
+.env
+.env.example
+
+meilisearch/

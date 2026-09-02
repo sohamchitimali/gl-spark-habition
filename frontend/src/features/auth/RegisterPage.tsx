@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { checkUsername, sendOtp } from '../../api/authApi';
+import { checkUsername } from '../../api/authApi';
 import habitionLogoGreen from '../../assets/habition_logo_green.svg';
 import Loading from '../../components/Loading';
+import { ConsistencyCascade } from '../../components/ConsistencyCascade';
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -14,8 +15,6 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-import { ConsistencyCascade } from '../../components/ConsistencyCascade';
-
 const RegisterPage = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -24,8 +23,6 @@ const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [emailStatus, setEmailStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
-  const [step, setStep] = useState<1 | 2>(1);
-  const [otp, setOtp] = useState('');
 
   const debouncedUsername = useDebounce(form.username, 500);
 
@@ -42,19 +39,22 @@ const RegisterPage = () => {
       return;
     }
 
+    let active = true;
     const verifyUsername = async () => {
       setUsernameStatus('checking');
       try {
         const res = await checkUsername(debouncedUsername, sessionId);
-        setUsernameStatus(res.data ? 'available' : 'taken');
+        if (active) setUsernameStatus(res.data ? 'available' : 'taken');
       } catch (err) {
-        setUsernameStatus('idle');
+        console.error("Username check failed:", err);
+        if (active) setUsernameStatus('idle');
       }
     };
     verifyUsername();
+    return () => { active = false; };
   }, [debouncedUsername, sessionId]);
 
-  const handleSubmitStep1 = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
@@ -81,25 +81,10 @@ const RegisterPage = () => {
 
     setLoading(true);
     try {
-      await sendOtp(form.email);
-      setStep(2);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to send OTP. Please try again.';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmitStep2 = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      await register({ email: form.email, password: form.password, username: form.username, otp });
+      await register({ email: form.email, password: form.password, username: form.username });
       navigate('/dashboard');
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Registration failed. Invalid OTP or email/username already taken.';
+      const msg = err?.response?.data?.message || 'Registration failed. Please try again.';
       setError(msg);
     } finally {
       setLoading(false);
@@ -128,8 +113,7 @@ const RegisterPage = () => {
             </div>
           )}
 
-          {step === 1 ? (
-            <form onSubmit={handleSubmitStep1} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: '#B4B2A9' }}>Username</label>
                 <input
@@ -173,11 +157,7 @@ const RegisterPage = () => {
                     if (!value) {
                       setEmailStatus('idle');
                     } else {
-                      // Standard email validation regex. Note: this accepts 2+ letter TLDs
-                      // which technically includes '.colm', '.tech', etc. as per modern RFCs.
                       const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-
-                      // Explicitly catch common typos for '.com' if desired:
                       if (value.endsWith('.colm') || value.endsWith('.con') || value.endsWith('.cmo')) {
                         setEmailStatus('invalid');
                       } else {
@@ -241,50 +221,9 @@ const RegisterPage = () => {
                 className="w-full py-3 rounded-xl text-white font-medium transition-all disabled:opacity-50 mt-6"
                 style={{ background: 'linear-gradient(135deg, #7F77DD, #534AB7)' }}
               >
-                {loading ? <Loading size={5} padding="0" idleColor="transparent" activeColor="#FFF" /> : 'Continue'}
+                {loading ? <Loading size={5} padding="0" idleColor="transparent" activeColor="#FFF" /> : 'Create Account'}
               </button>
             </form>
-          ) : (
-            <form onSubmit={handleSubmitStep2} className="space-y-4">
-              <p className="text-sm text-center mb-6" style={{ color: '#B4B2A9' }}>
-                We sent a 6-digit verification code to <span className="text-white font-medium">{form.email}</span>.
-              </p>
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Verification Code</label>
-                <input
-                  id="register-otp"
-                  type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="123456"
-                  maxLength={6}
-                  required
-                  className="w-full px-4 py-3 rounded-xl text-white text-center text-2xl tracking-[0.5em] placeholder-gray-500 outline-none transition-all"
-                  style={{ background: '#363634', border: '1px solid #424240' }}
-                  onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
-                  onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || otp.length !== 6}
-                className="w-full py-3 rounded-xl text-white font-medium transition-all disabled:opacity-50 mt-6"
-                style={{ background: 'linear-gradient(135deg, #7F77DD, #534AB7)' }}
-              >
-                {loading ? <Loading size={5} padding="0" idleColor="transparent" activeColor="#FFF" /> : 'Verify & Create Account'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="w-full py-3 rounded-xl text-white font-medium transition-all mt-4 hover:bg-[#363634]"
-                style={{ border: '1px solid #424240' }}
-              >
-                Back
-              </button>
-            </form>
-          )}
 
           <p className="mt-6 text-center text-sm" style={{ color: '#B4B2A9' }}>
             Already have an account?{' '}

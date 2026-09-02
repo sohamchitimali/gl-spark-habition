@@ -16,7 +16,7 @@ const ForgotPasswordPage = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSendCode = async (e: React.FormEvent) => {
+  const handleSendCode = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setLoading(true);

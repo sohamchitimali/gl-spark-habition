@@ -40,6 +40,18 @@ public class UserService {
     @Autowired
     private MeilisearchSyncService meilisearchSyncService;
 
+    private static class UsernameReservation {
+        String sessionId;
+        long timestamp;
+        UsernameReservation(String sessionId, long timestamp) {
+            this.sessionId = sessionId;
+            this.timestamp = timestamp;
+        }
+    }
+    
+    private final java.util.concurrent.ConcurrentHashMap<String, UsernameReservation> usernameReservations = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final long RESERVATION_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+
     public AuthResponseDto register(AuthRequestDto request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Email already exists");
@@ -67,14 +79,38 @@ public class UserService {
         profile.setUser(savedUser);
         profile.setName(request.getEmail().split("@")[0]); // Default name
         userProfileRepository.save(profile);
+        
+        usernameReservations.remove(request.getUsername());
 
         String accessToken = jwtUtil.generateAccessToken(String.valueOf(savedUser.getId()));
         meilisearchSyncService.syncUser(savedUser);
         return new AuthResponseDto(accessToken, refreshToken, savedUser.getId());
     }
 
-    public boolean isUsernameAvailable(String username) {
-        return userRepository.findByUsername(username).isEmpty();
+    public boolean isUsernameAvailable(String username, String sessionId) {
+        long now = System.currentTimeMillis();
+        
+        if (userRepository.findByUsername(username).isPresent()) {
+            return false;
+        }
+
+        if (sessionId == null) {
+            UsernameReservation existing = usernameReservations.get(username);
+            return existing == null || now - existing.timestamp > RESERVATION_EXPIRY_MS;
+        }
+
+        UsernameReservation res = usernameReservations.compute(username, (k, v) -> {
+            if (v == null || now - v.timestamp > RESERVATION_EXPIRY_MS) {
+                return new UsernameReservation(sessionId, now);
+            }
+            if (v.sessionId.equals(sessionId)) {
+                v.timestamp = now;
+                return v;
+            }
+            return v;
+        });
+
+        return res.sessionId.equals(sessionId);
     }
 
     public AuthResponseDto login(AuthRequestDto request) {

@@ -44,7 +44,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ latitude, longitude
     }
   }, [addressDisplay]);
 
-  const searchLocation = async (e?: React.FormEvent | React.MouseEvent | React.KeyboardEvent) => {
+  const searchLocation = async (e?: React.FormEvent<HTMLFormElement> | React.MouseEvent | React.KeyboardEvent) => {
     if (e) e.preventDefault();
     if (!query.trim()) return;
     setSearching(true);

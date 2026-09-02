@@ -354,7 +354,7 @@ const ChatsPage = () => {
     }
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!newMessage.trim() || !activeConvo) return;
 
