@@ -9,27 +9,6 @@ import TimeWindowSlider from '../../components/TimeWindowSlider';
 import { HexColorPicker } from 'react-colorful';
 import LocationSelector from '../../components/LocationSelector';
 
-const calculateInterval = (start: string, end: string, frequency: number) => {
-  const [startH, startM] = start.split(':').map(Number);
-  const [endH, endM] = end.split(':').map(Number);
-  
-  const startMinutes = startH * 60 + startM;
-  let endMinutes = endH * 60 + endM;
-  if (endMinutes <= startMinutes) {
-    endMinutes += 24 * 60;
-  }
-  
-  const totalMinutes = endMinutes - startMinutes;
-  const intervalMinutes = Math.floor(totalMinutes / frequency);
-  
-  const h = Math.floor(intervalMinutes / 60);
-  const m = intervalMinutes % 60;
-  
-  if (h > 0 && m > 0) return `every ${h} hour${h > 1 ? 's' : ''} and ${m} min`;
-  if (h > 0) return `every ${h} hour${h > 1 ? 's' : ''}`;
-  return `every ${m} min`;
-};
-
 const ProfilePage = () => {
   const { userId } = useAuth();
   const { confirm } = useConfirm();
@@ -502,7 +481,6 @@ const ProfilePage = () => {
                     <TimeWindowSlider
                       startTime={notifSettings.windowStart}
                       endTime={notifSettings.windowEnd}
-                      frequency={notifSettings.frequency}
                       onChange={(start, end) => setNotifSettings(s => ({ ...s, windowStart: start, windowEnd: end }))}
                       minWindowHours={6}
                     />
@@ -513,9 +491,6 @@ const ProfilePage = () => {
                         Reminders per Day: <span className="text-white font-bold">{notifSettings.frequency}</span>
                         <span className="block text-xs font-normal text-gray-500 mt-1">
                           You will receive {notifSettings.frequency} evenly distributed notifications during your active window.
-                          <span className="block mt-1 text-[#534AB7] font-semibold">
-                            (~ {calculateInterval(notifSettings.windowStart, notifSettings.windowEnd, notifSettings.frequency)})
-                          </span>
                         </span>
                       </label>
                       <input
