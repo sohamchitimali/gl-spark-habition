@@ -45,10 +45,6 @@ public class SignalEngineService {
      * @return UserInsightDTO containing computed signals
      */
     public UserInsightDTO computeUserInsights(String userId, LocalDate date) {
-        // TODO: Implement comeback detection
-        // TODO: Implement streak at risk detection
-        // TODO: Implement milestone generation
-        
         return UserInsightDTO.builder()
                 .userId(userId)
                 .currentCompletionRate(0.0)
