@@ -28,6 +28,8 @@ public class AuthController {
     @GetMapping("/check-username")
     public ResponseEntity<Boolean> checkUsername(@RequestParam String username, @RequestParam(required = false) String sessionId) {
         return ResponseEntity.ok(userService.isUsernameAvailable(username, sessionId));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDto> login(@RequestBody AuthRequestDto request) {
         return ResponseEntity.ok(userService.login(request));
