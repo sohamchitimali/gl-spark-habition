@@ -52,7 +52,7 @@ public class GroupSearchService {
                     
             Searchable searchResult = groupIndex.search(request);
             List<Long> matchedIds = searchResult.getHits().stream()
-                    .map(hit -> Double.valueOf(((java.util.Map) hit).get("id").toString()).longValue())
+                    .map(hit -> Double.valueOf(((java.util.Map<?, ?>) hit).get("id").toString()).longValue())
                     .collect(Collectors.toList());
 
             if (matchedIds.isEmpty()) return Collections.emptyList();

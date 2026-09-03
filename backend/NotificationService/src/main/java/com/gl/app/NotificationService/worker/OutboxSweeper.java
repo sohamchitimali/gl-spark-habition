@@ -67,7 +67,8 @@ public class OutboxSweeper {
 
     private void submitToJobRunr(JobOutbox job) throws Exception {
         if ("NOTIFICATION_SLOT".equals(job.getJobType())) {
-            Map payload = objectMapper.readValue(job.getPayload(), Map.class);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> payload = objectMapper.readValue(job.getPayload(), Map.class);
             String userId = (String) payload.get("userId");
             LocalDate notificationDate = LocalDate.parse((String) payload.get("notificationDate"));
             int cycleIndex = Integer.parseInt(String.valueOf(payload.get("cycleIndex")));

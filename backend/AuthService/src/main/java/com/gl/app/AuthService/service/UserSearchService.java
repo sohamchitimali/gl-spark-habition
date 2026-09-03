@@ -62,7 +62,7 @@ public class UserSearchService {
 
             // Extract User IDs
             List<Long> userIds = hits.stream()
-                    .map(hit -> Double.valueOf(((java.util.Map) hit).get("id").toString()).longValue())
+                    .map(hit -> Double.valueOf(((java.util.Map<?, ?>) hit).get("id").toString()).longValue())
                     .collect(Collectors.toList());
 
             // 2. Fetch Users from DB

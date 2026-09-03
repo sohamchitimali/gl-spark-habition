@@ -3,12 +3,9 @@ package com.gl.app.NotificationService.repository;
 import com.gl.app.NotificationService.entity.JobOutbox;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
-@Repository
 public interface JobOutboxRepository extends JpaRepository<JobOutbox, String> {
 
     /**

@@ -184,18 +184,22 @@ public class GeminiClient {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
         // Throws RestClientException on HTTP errors — caller must handle
-        ResponseEntity<Map> response = restTemplate.postForEntity(urlWithKey, request, Map.class);
+        @SuppressWarnings("unchecked")
+        ResponseEntity<Map<String, Object>> response = (ResponseEntity<Map<String, Object>>) (ResponseEntity<?>) restTemplate.postForEntity(urlWithKey, request, Map.class);
 
         if (response.getBody() == null || !response.getBody().containsKey("candidates")) {
             throw new RuntimeException("Gemini response missing 'candidates' field");
         }
 
+        @SuppressWarnings("unchecked")
         List<Map<String, Object>> candidates = (List<Map<String, Object>>) response.getBody().get("candidates");
         if (candidates.isEmpty()) {
             throw new RuntimeException("Gemini returned empty candidates list");
         }
 
+        @SuppressWarnings("unchecked")
         Map<String, Object> contentMap = (Map<String, Object>) candidates.get(0).get("content");
+        @SuppressWarnings("unchecked")
         List<Map<String, Object>> parts = (List<Map<String, Object>>) contentMap.get("parts");
         if (parts == null || parts.isEmpty()) {
             throw new RuntimeException("Gemini returned empty parts list");

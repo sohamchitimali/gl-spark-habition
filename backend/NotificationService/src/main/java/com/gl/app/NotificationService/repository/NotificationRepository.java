@@ -3,11 +3,8 @@ package com.gl.app.NotificationService.repository;
 import com.gl.app.NotificationService.entity.Notification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 
-@Repository
 public interface NotificationRepository extends JpaRepository<Notification, String> {
 
     @Query(value = "SELECT * FROM notifications WHERE status = 'PENDING_COMPOSITION' LIMIT :batchSize FOR UPDATE SKIP LOCKED", nativeQuery = true)

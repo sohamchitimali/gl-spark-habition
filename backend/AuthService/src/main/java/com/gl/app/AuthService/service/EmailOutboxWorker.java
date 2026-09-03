@@ -21,7 +21,6 @@ public class EmailOutboxWorker {
     private final EmailOutboxRepository outboxRepository;
     private final JavaMailSender mailSender;
 
-    @Autowired
     public EmailOutboxWorker(EmailOutboxRepository outboxRepository, JavaMailSender mailSender) {
         this.outboxRepository = outboxRepository;
         this.mailSender = mailSender;
