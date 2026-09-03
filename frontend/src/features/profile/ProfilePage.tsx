@@ -502,6 +502,7 @@ const ProfilePage = () => {
                     <TimeWindowSlider
                       startTime={notifSettings.windowStart}
                       endTime={notifSettings.windowEnd}
+                      frequency={notifSettings.frequency}
                       onChange={(start, end) => setNotifSettings(s => ({ ...s, windowStart: start, windowEnd: end }))}
                       minWindowHours={6}
                     />

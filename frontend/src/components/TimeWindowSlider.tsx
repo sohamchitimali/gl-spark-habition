@@ -5,9 +5,10 @@ interface TimeWindowSliderProps {
   endTime: string;   // e.g. "22:00"
   onChange: (startTime: string, endTime: string) => void;
   minWindowHours?: number;
+  frequency?: number;
 }
 
-export default function TimeWindowSlider({ startTime, endTime, onChange, minWindowHours = 6 }: TimeWindowSliderProps) {
+export default function TimeWindowSlider({ startTime, endTime, onChange, minWindowHours = 6, frequency }: TimeWindowSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   
   // Convert HH:MM to integer hour (0-23)
@@ -122,6 +123,18 @@ export default function TimeWindowSlider({ startTime, endTime, onChange, minWind
     return hour > 12 ? `${hour - 12}:00 PM` : `${hour}:00 AM`;
   };
 
+  const calculateIntervalText = (start: number, end: number, freq?: number) => {
+    if (!freq || freq <= 0) return '';
+    let totalMinutes = (end - start) * 60;
+    if (totalMinutes <= 0) totalMinutes += 24 * 60;
+    const intervalMinutes = Math.floor(totalMinutes / freq);
+    const h = Math.floor(intervalMinutes / 60);
+    const m = intervalMinutes % 60;
+    if (h > 0 && m > 0) return `~ every ${h} hour${h > 1 ? 's' : ''} and ${m} min`;
+    if (h > 0) return `~ every ${h} hour${h > 1 ? 's' : ''}`;
+    return `~ every ${m} min`;
+  };
+
   return (
     <div className="w-full flex flex-col items-center py-6 select-none touch-none">
       
@@ -187,7 +200,13 @@ export default function TimeWindowSlider({ startTime, endTime, onChange, minWind
 
       {/* Dynamic Summary Text */}
       <p className="text-sm text-center text-[#B4B2A9] font-medium bg-[#363634]/50 px-4 py-3 rounded-xl border border-[#424240] mt-2">
-        Your notifications will be sent in the window starting from <span className="text-white font-bold">{formatDisplayTime(startHour)}</span> to <span className="text-white font-bold">{formatDisplayTime(endHour)}</span>.
+        Your notifications will be sent in the window starting from{' '}
+        <span className="text-white font-bold">{formatDisplayTime(startHour)}</span> to{' '}
+        <span className="text-white font-bold">{formatDisplayTime(endHour)}</span>
+        {frequency ? (
+          <> (<span className="text-[#AFA9EC] font-semibold">{calculateIntervalText(startHour, endHour, frequency)}</span>)</>
+        ) : null}
+        .
       </p>
     </div>
   );
