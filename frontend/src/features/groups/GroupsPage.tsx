@@ -92,8 +92,6 @@ const GroupsPage = () => {
         ) : (
           <div className="space-y-4 animate-fade-up delay-200">
             {groups.map((group, i) => {
-              const isOwner = group.ownerId === (/* need userId here... let's just show it if adminIds includes us or just for anyone who is admin */ group.adminIds?.[0]);
-              // Wait, I need userId. Let's import useAuth in GroupsPage.
               return (
                 <div key={group.id}
                   className="rounded-2xl p-5 transition-all hover:scale-[1.01] relative"

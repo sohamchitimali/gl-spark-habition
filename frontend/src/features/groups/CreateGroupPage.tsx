@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthContext';
 import { createGroup } from '../../api/groupApi';
 import { getFriendships, type FriendshipDto } from '../../api/authApi';
-import { sendMessage } from '../../api/chatApi';
 import Loading from '../../components/Loading';
 import Navbar from '../../components/Navbar';
 import LocationSelector from '../../components/LocationSelector';
@@ -54,7 +52,7 @@ const CreateGroupPage = () => {
           setLongitude(parsed.longitude);
           setAddressDisplay(parsed.locationDisplay || `${parsed.latitude}, ${parsed.longitude}`);
         }
-      } catch(e) {}
+      } catch {}
     }
   }, []);
 

@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../auth/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { getMyMessages, sendMessage, markAsRead, type DirectMessage } from '../../api/chatApi';
-import { getUsers, getFriendships, type UserProfile, type FriendshipDto } from '../../api/authApi';
-import { getMyGroups, type GroupResponse, getPendingRequests, approveRequest, rejectRequest, blockRequester } from '../../api/groupApi';
+import { getUsers, getFriendships, type UserProfile } from '../../api/authApi';
+import { getMyGroups, getPendingRequests, approveRequest, rejectRequest, blockRequester } from '../../api/groupApi';
 import { useSearchParams } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Loading from '../../components/Loading';
@@ -30,8 +29,6 @@ interface Conversation {
 
 const ChatsPage = () => {
   const { userId } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
   const { confirm } = useConfirm();
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -184,7 +181,7 @@ const ChatsPage = () => {
                       pendingRequestId = matchingReq.id;
                       pendingGroupId = joinReqMsg.groupId;
                     }
-                  } catch (e) { }
+                  } catch { }
                 }
               }
 
@@ -564,7 +561,7 @@ const ChatsPage = () => {
                   {(() => {
                     const firstJoinReq = activeConvo.messages.find(m => m.chatType === 'JOIN_REQUEST');
 
-                    return activeConvo.messages.map((msg, i) => {
+                    return activeConvo.messages.map(msg => {
                       const isMe = msg.senderId === userId;
                       const isApplicant = firstJoinReq ? msg.senderId === firstJoinReq.senderId : false;
 

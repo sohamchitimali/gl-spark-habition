@@ -1,6 +1,5 @@
 package com.gl.app.NotificationService.controller;
 
-import com.gl.app.NotificationService.repository.NotificationScheduleRepository;
 import com.gl.app.NotificationService.service.NotificationScheduleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

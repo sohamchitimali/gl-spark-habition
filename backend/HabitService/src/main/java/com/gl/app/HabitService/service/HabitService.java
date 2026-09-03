@@ -38,7 +38,6 @@ import com.gl.app.HabitService.dto.GroupResponse;
 @Slf4j
 public class HabitService {
 
-    private static final int BASE_COINS = 10;
     private static final int STREAK_BONUS_COINS = 50;
     private static final int STREAK_BONUS_INTERVAL = 7;
 

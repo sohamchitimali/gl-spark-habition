@@ -404,7 +404,6 @@ public class GroupService {
         newDeadline = newDeadline.withHour(12).withMinute(0).withSecond(0).withNano(0);
 
         group.setCompetitionEndDate(newDeadline);
-        group.setCompetitionActive(true);
         return toResponse(groupRepository.save(group));
     }
 
@@ -513,25 +512,5 @@ public class GroupService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "You are not a member of this group"));
 
         groupMemberRepository.delete(member);
-    }
-
-    private LocalDateTime calculateEndDate(String duration) {
-        if (duration == null || duration.equalsIgnoreCase("Indefinite")) {
-            return null;
-        }
-        duration = duration.toLowerCase().trim();
-        LocalDateTime baseDate = LocalDateTime.now();
-        try {
-            String[] parts = duration.split(" ");
-            int amount = Integer.parseInt(parts[0]);
-            String unit = parts[1];
-            if (unit.contains("day")) return baseDate.plusDays(amount);
-            if (unit.contains("week")) return baseDate.plusWeeks(amount);
-            if (unit.contains("month")) return baseDate.plusMonths(amount);
-            if (unit.contains("year")) return baseDate.plusYears(amount);
-        } catch (Exception e) {
-            log.warn("Failed to parse duration: {}", duration);
-        }
-        return null;
     }
 }

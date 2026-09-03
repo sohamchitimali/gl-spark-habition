@@ -141,7 +141,7 @@ class GroupServiceTest {
         when(groupHabitRepository.save(any(GroupHabit.class))).thenReturn(saved);
 
         // Act
-        GroupHabitResponse response = groupService.addHabit(groupId, request);
+        GroupHabitResponse response = groupService.addHabit(groupId, request, 1L);
 
         // Assert
         assertThat(response.getTitle()).isEqualTo("Morning Run");

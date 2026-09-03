@@ -9,6 +9,27 @@ import TimeWindowSlider from '../../components/TimeWindowSlider';
 import { HexColorPicker } from 'react-colorful';
 import LocationSelector from '../../components/LocationSelector';
 
+const calculateInterval = (start: string, end: string, frequency: number) => {
+  const [startH, startM] = start.split(':').map(Number);
+  const [endH, endM] = end.split(':').map(Number);
+  
+  const startMinutes = startH * 60 + startM;
+  let endMinutes = endH * 60 + endM;
+  if (endMinutes <= startMinutes) {
+    endMinutes += 24 * 60;
+  }
+  
+  const totalMinutes = endMinutes - startMinutes;
+  const intervalMinutes = Math.floor(totalMinutes / frequency);
+  
+  const h = Math.floor(intervalMinutes / 60);
+  const m = intervalMinutes % 60;
+  
+  if (h > 0 && m > 0) return `every ${h} hour${h > 1 ? 's' : ''} and ${m} min`;
+  if (h > 0) return `every ${h} hour${h > 1 ? 's' : ''}`;
+  return `every ${m} min`;
+};
+
 const ProfilePage = () => {
   const { userId } = useAuth();
   const { confirm } = useConfirm();
@@ -491,6 +512,9 @@ const ProfilePage = () => {
                         Reminders per Day: <span className="text-white font-bold">{notifSettings.frequency}</span>
                         <span className="block text-xs font-normal text-gray-500 mt-1">
                           You will receive {notifSettings.frequency} evenly distributed notifications during your active window.
+                          <span className="block mt-1 text-[#534AB7] font-semibold">
+                            (~ {calculateInterval(notifSettings.windowStart, notifSettings.windowEnd, notifSettings.frequency)})
+                          </span>
                         </span>
                       </label>
                       <input
@@ -518,7 +542,6 @@ const ProfilePage = () => {
                             const headers = { 'X-User-Id': String(userId) };
                             const body = { ...notifSettings, timezone: form.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone };
                             
-                            let errorMsg = '⚠️ Failed to save notification settings';
                             try {
                               await axiosInstance.put('/notifications/settings', body, { headers });
                               showToast('✅ Notification settings saved!');
@@ -526,12 +549,8 @@ const ProfilePage = () => {
                               if (putErr.response?.status === 400) {
                                 throw putErr; 
                               }
-                              try {
-                                await axiosInstance.post('/notifications/settings', body, { headers });
-                                showToast('✅ Notification settings saved!');
-                              } catch (postErr: any) {
-                                throw postErr;
-                              }
+                              await axiosInstance.post('/notifications/settings', body, { headers });
+                              showToast('✅ Notification settings saved!');
                             }
                           } catch (err: any) {
                              if (err.response?.data?.error) {
@@ -556,7 +575,7 @@ const ProfilePage = () => {
                           setTestLoading(true);
                           try {
                             await axiosInstance.post('/notifications/settings/test', {}, { headers: { 'X-User-Id': String(userId) } });
-                            showToast('📧 Test email triggered! Check your inbox shortly.');
+                            showToast('Test email triggered! Check your inbox shortly.');
                           } catch (err: any) {
                             if (err.response?.data?.error) {
                               showToast(`⚠️ ${err.response.data.error}`);

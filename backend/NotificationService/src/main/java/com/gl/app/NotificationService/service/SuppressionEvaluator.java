@@ -2,11 +2,9 @@ package com.gl.app.NotificationService.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.gl.app.NotificationService.client.HabitServiceClient;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 

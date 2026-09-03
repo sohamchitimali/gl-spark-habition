@@ -67,9 +67,6 @@ public class RuleBasedFallbackEngine {
         // --- Personal section ---
         if (personalSignals != null) {
             int incompleteCount = (int) personalSignals.get("incompletePersonalCount");
-            double weeklyConsistency = (double) personalSignals.get("weeklyConsistency");
-            long hoursLeft = (long) personalSignals.get("hoursUntilMidnight");
-            String localTime = (String) personalSignals.get("localTimeOfDay");
             int currentStreak = (int) personalSignals.get("currentStreak");
             java.util.List<String> habitNames = (java.util.List<String>) personalSignals.get("habitNames");
             String namesList = "";
@@ -108,9 +105,7 @@ public class RuleBasedFallbackEngine {
                 int incompleteCount = (int) group.get("incompleteCount");
                 int rankTrajectory = (int) group.get("rankTrajectory");
                 int currentRank = (int) group.getOrDefault("currentRank", 0);
-                long hoursLeft = (long) group.get("hoursUntilMidnight");
                 int currentStreak = (int) group.get("currentStreak");
-                String localTime = (String) group.get("localTimeOfDay");
                 java.util.List<String> habitNames = (java.util.List<String>) group.get("habitNames");
                 String namesList = "";
                 if (habitNames != null && !habitNames.isEmpty()) {

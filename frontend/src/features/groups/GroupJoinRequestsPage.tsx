@@ -163,19 +163,19 @@ const GroupJoinRequestsPage: React.FC = () => {
                               try {
                                 await approveRequest(Number(groupId), req.id);
                                 setRequests(prev => prev.filter(r => r.id !== req.id));
-                              } catch (e) { }
+                              } catch { }
                             }} className="px-5 py-2 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-xl text-sm font-bold transition-colors border border-green-500/20 flex-1 sm:flex-none text-center">Approve</button>
                             <button onClick={async () => {
                               try {
                                 await rejectRequest(Number(groupId), req.id);
                                 setRequests(prev => prev.filter(r => r.id !== req.id));
-                              } catch (e) { }
+                              } catch { }
                             }} className="px-5 py-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-xl text-sm font-bold transition-colors border border-red-500/20 flex-1 sm:flex-none text-center">Reject</button>
                             <button onClick={async () => {
                               try {
                                 await blockRequester(Number(groupId), req.id);
                                 setRequests(prev => prev.filter(r => r.id !== req.id));
-                              } catch (e) { }
+                              } catch { }
                             }} className="px-5 py-2 bg-[#1a1a18] text-gray-400 border border-gray-100/20 hover:text-red-400 rounded-xl text-sm font-bold transition-colors border border-[#363634] hover:border-red-900/50 flex-1 sm:flex-none text-center">Block</button>
                           </div>
                         </div>

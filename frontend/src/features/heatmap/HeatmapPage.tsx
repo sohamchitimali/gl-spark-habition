@@ -9,8 +9,6 @@ const HeatmapPage = () => {
   const { userId } = useAuth();
   const [heatmapData, setHeatmapData] = useState<Map<string, number>>(new Map());
 
-  const today = new Date();
-
   useEffect(() => {
     if (!userId) return;
     getHeatmap(userId)

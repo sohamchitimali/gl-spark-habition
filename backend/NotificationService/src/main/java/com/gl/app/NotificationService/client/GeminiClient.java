@@ -1,6 +1,5 @@
 package com.gl.app.NotificationService.client;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -34,11 +33,9 @@ public class GeminiClient {
     private String apiKey;
 
     private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
 
     public GeminiClient() {
         this.restTemplate = new RestTemplate();
-        this.objectMapper = new ObjectMapper();
     }
 
     /**

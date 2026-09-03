@@ -10,6 +10,6 @@ public class GroupCoinClientFallback implements GroupCoinClient {
     @Override
     public void creditCoins(CreditCoinsRequest request) {
         log.warn("GroupService is down! Failed to credit {} coins for userId {} in groupId {}. Silent fallback.", 
-            request.getCoins(), request.getUserId(), request.getGroupId());
+            request.getAmount(), request.getUserId(), request.getGroupId());
     }
 }

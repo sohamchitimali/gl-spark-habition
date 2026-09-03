@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { searchGroups, type GroupResponse, requestToJoin, joinGroup } from '../../api/groupApi';
 import { searchUsers, sendFriendRequest, type Profile, getProfile } from '../../api/authApi';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Loading from '../../components/Loading';
 import { useAuth } from '../../auth/AuthContext';
@@ -49,7 +49,6 @@ const SearchPage: React.FC = () => {
   const [userTags, setUserTags] = useState<string[]>([]);
   const [userLat, setUserLat] = useState<number | undefined>();
   const [userLng, setUserLng] = useState<number | undefined>();
-  const [profileIncomplete, setProfileIncomplete] = useState(false);
 
   const [joinStatus, setJoinStatus] = useState<Record<number, string>>({});
   const [selectedGroup, setSelectedGroup] = useState<GroupResponse | null>(null);

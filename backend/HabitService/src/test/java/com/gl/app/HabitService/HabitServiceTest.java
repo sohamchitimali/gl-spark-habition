@@ -114,11 +114,6 @@ class HabitServiceTest {
     void getStreak_shouldReturnCorrectCurrentStreak() {
         // Arrange
         Long userId = 10L;
-        List<LocalDate> dates = List.of(
-                LocalDate.now(),
-                LocalDate.now().minusDays(1),
-                LocalDate.now().minusDays(2)
-        );
         Habit mockHabit = new Habit(1L, "Morning Run", "Run every morning", userId, null, null, null);
         when(habitRepository.findByUserId(userId)).thenReturn(List.of(mockHabit));
         

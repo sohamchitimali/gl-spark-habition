@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.gl.app.GroupService.dto.NotificationSummary;
-import com.gl.app.GroupService.entity.DirectMessage;
 import com.gl.app.GroupService.entity.Group;
 import com.gl.app.GroupService.repository.GroupJoinRequestRepository;
 import com.gl.app.GroupService.repository.GroupRepository;

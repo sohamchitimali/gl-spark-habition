@@ -9,7 +9,6 @@ const Navbar = () => {
   const { userId, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [unreadChats, setUnreadChats] = useState(0);
@@ -48,7 +47,7 @@ const Navbar = () => {
           }
           setUsername(profileRes.data.username || '');
         }
-      } catch (err) { }
+      } catch { }
     };
 
     fetchNotifs();

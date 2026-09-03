@@ -84,11 +84,6 @@
       <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
     </dependency>
 
-    <!-- Feign Client (for inter-service HTTP calls) -->
-    <dependency>
-      <groupId>org.springframework.cloud</groupId>
-      <artifactId>spring-cloud-starter-openfeign</artifactId>
-    </dependency>
 
     <!-- JobRunr (background job scheduling) -->
     <dependency>

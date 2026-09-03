@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { getGroup, addHabit, deleteGroupHabit, deleteGroup, leaveGroup, changeDeadline, promoteToAdmin, demoteMember, updateGroupSettings, kickMember, kickAndBlockMember, type GroupResponse, type GroupHabit } from '../../api/groupApi';
@@ -11,7 +11,6 @@ import { getUserGroupHeatmap, getGroupHeatmap, getIndividualGroupConsistency, ge
 import Navbar from '../../components/Navbar';
 import habitionCoin from '../../assets/habition_coin.png';
 import LocationSelector from '../../components/LocationSelector';
-import SpinningCoin3D from '../../components/SpinningCoin3D';
 import CelebrationModal from '../../components/CelebrationModal';
 import confetti from 'canvas-confetti';
 import HeatmapView from '../../components/HeatmapView';
@@ -54,7 +53,7 @@ const GroupDashboardPage = () => {
   const [loading, setLoading] = useState(true);
 
   const [coins, setCoins] = useState<number | null>(null);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [_leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [myRank, setMyRank] = useState<number | null>(null);
 
   const [streak, setStreak] = useState(0);
@@ -305,7 +304,7 @@ const GroupDashboardPage = () => {
       setShowCreateModal(false);
       loadHeatmaps();
       showToast('Habit created!');
-    } catch (err) {
+    } catch {
       showToast('⚠️ Failed to create habit');
     } finally {
       setCreating(false);
@@ -322,7 +321,7 @@ const GroupDashboardPage = () => {
       if (expandedId === habitId) setExpandedId(null);
       loadHeatmaps();
       showToast('Habit deleted');
-    } catch (err) {
+    } catch {
       showToast('⚠️ Failed to delete habit');
     }
   };
@@ -353,7 +352,7 @@ const GroupDashboardPage = () => {
             groupStreakAchieved = true;
             localStorage.setItem(lsKey, newGroupStreak.toString());
           }
-        } catch (e) { }
+        } catch { }
       }
 
       // ALWAYS fire confetti
@@ -422,7 +421,7 @@ const GroupDashboardPage = () => {
       setGroup(res.data);
       setShowExtendModal(false);
       showToast('Deadline updated successfully!');
-    } catch (err) {
+    } catch {
       showToast('⚠️ Failed to update deadline');
     } finally {
       setExtending(false);
@@ -438,7 +437,7 @@ const GroupDashboardPage = () => {
       loadLeaderboard();
       setShowGroupDetailsModal(false);
       showToast('Group coins have been reset!');
-    } catch (err) {
+    } catch {
       showToast('⚠️ Failed to reset coins');
     } finally {
       setResetting(false);
@@ -1441,7 +1440,7 @@ const GroupDashboardPage = () => {
                                   const res = await promoteToAdmin(Number(groupId), member.id);
                                   setGroup(res.data);
                                   showToast(`${member.name || 'User'} is now an admin`);
-                                } catch (e) {
+                                } catch {
                                   showToast('⚠️ Failed to promote user');
                                 }
                               }}
@@ -1457,7 +1456,7 @@ const GroupDashboardPage = () => {
                                   const res = await demoteMember(Number(groupId), member.id);
                                   setGroup(res.data);
                                   showToast(`${member.name || 'User'} is no longer an admin`);
-                                } catch (e) {
+                                } catch {
                                   showToast('⚠️ Failed to remove admin');
                                 }
                               }}
@@ -1476,7 +1475,7 @@ const GroupDashboardPage = () => {
                                       await kickMember(Number(groupId), member.id);
                                       setMembers(prev => prev.filter(m => m.id !== member.id));
                                       showToast("Member kicked.");
-                                    } catch (e) {
+                                    } catch {
                                       showToast("⚠️ Failed to kick member");
                                     }
                                   }
@@ -1493,7 +1492,7 @@ const GroupDashboardPage = () => {
                                       await kickAndBlockMember(Number(groupId), member.id);
                                       setMembers(prev => prev.filter(m => m.id !== member.id));
                                       showToast("Member kicked and blocked.");
-                                    } catch (e) {
+                                    } catch {
                                       showToast("⚠️ Failed to kick and block member");
                                     }
                                   }
@@ -1626,7 +1625,6 @@ const GroupDashboardPage = () => {
                       }
                       setSavingSettings(true);
                       try {
-                        const { updateGroupSettings } = await import('../../api/groupApi');
                         const res = await updateGroupSettings(Number(groupId), {
                           name: editGroupName.trim(),
                           description: editGroupDesc.trim(),
@@ -1639,7 +1637,7 @@ const GroupDashboardPage = () => {
                         setGroup(res.data);
                         showToast('Settings saved successfully');
                         setShowGroupDetailsModal(false);
-                      } catch (err) {
+                      } catch {
                         showToast('⚠️ Failed to save settings');
                       } finally {
                         setSavingSettings(false);
