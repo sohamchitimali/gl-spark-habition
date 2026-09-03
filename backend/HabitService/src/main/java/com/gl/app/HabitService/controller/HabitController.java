@@ -8,7 +8,6 @@ import com.gl.app.HabitService.dto.HeatmapResponse;
 import com.gl.app.HabitService.dto.StreakResponse;
 import com.gl.app.HabitService.service.HabitService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,8 +22,11 @@ import java.util.List;
 @Slf4j
 public class HabitController {
 
-    @Autowired
-    private HabitService habitService;
+    private final HabitService habitService;
+
+    public HabitController(HabitService habitService) {
+        this.habitService = habitService;
+    }
 
     // ─── Habit endpoints ──────────────────────────────────────────────────────
 
@@ -84,7 +86,7 @@ public class HabitController {
     }
 
     @GetMapping("/habits/consistency/personal")
-    public ResponseEntity<java.util.Map<String, Object>> getConsistencyStats(@RequestParam("userId") Long userId) {
+    public ResponseEntity<java.util.Map<String, Object>> getConsistencyStats(@RequestParam Long userId) {
         return ResponseEntity.ok(habitService.getPersonalOverallConsistency(userId));
     }
 

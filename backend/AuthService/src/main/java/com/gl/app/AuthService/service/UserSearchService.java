@@ -7,7 +7,6 @@ import com.meilisearch.sdk.Client;
 import com.meilisearch.sdk.Config;
 import com.meilisearch.sdk.Index;
 import com.meilisearch.sdk.SearchRequest;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -28,11 +27,13 @@ public class UserSearchService {
     private Client client;
     private Index userIndex;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final UserService userService;
 
-    @Autowired
-    private UserService userService;
+    public UserSearchService(UserRepository userRepository, UserService userService) {
+        this.userRepository = userRepository;
+        this.userService = userService;
+    }
 
     @PostConstruct
     public void init() {
@@ -61,9 +62,12 @@ public class UserSearchService {
             }
 
             // Extract User IDs
-            List<Long> userIds = hits.stream()
-                    .map(hit -> Double.valueOf(((java.util.Map<?, ?>) hit).get("id").toString()).longValue())
-                    .collect(Collectors.toList());
+            List<Long> userIds = new ArrayList<>();
+            for (Object hit : hits) {
+                if (hit instanceof Map<?, ?> hitMap && hitMap.containsKey("id")) {
+                    userIds.add(Double.valueOf(hitMap.get("id").toString()).longValue());
+                }
+            }
 
             // 2. Fetch Users from DB
             List<User> users = userRepository.findAllById(userIds);

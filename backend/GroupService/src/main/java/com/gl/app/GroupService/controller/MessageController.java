@@ -2,7 +2,6 @@ package com.gl.app.GroupService.controller;
 
 import com.gl.app.GroupService.entity.DirectMessage;
 import com.gl.app.GroupService.repository.DirectMessageRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,17 +21,20 @@ import java.util.Collections;
 @RequestMapping("/messages")
 public class MessageController {
 
-    @Autowired
-    private DirectMessageRepository directMessageRepository;
-    
-    @Autowired
-    private GroupRepository groupRepository;
-    
-    @Autowired
-    private GroupJoinRequestRepository joinRequestRepository;
-    
-    @Autowired
-    private GroupMemberRepository groupMemberRepository;
+    private final DirectMessageRepository directMessageRepository;
+    private final GroupRepository groupRepository;
+    private final GroupJoinRequestRepository joinRequestRepository;
+    private final GroupMemberRepository groupMemberRepository;
+
+    public MessageController(DirectMessageRepository directMessageRepository,
+                             GroupRepository groupRepository,
+                             GroupJoinRequestRepository joinRequestRepository,
+                             GroupMemberRepository groupMemberRepository) {
+        this.directMessageRepository = directMessageRepository;
+        this.groupRepository = groupRepository;
+        this.joinRequestRepository = joinRequestRepository;
+        this.groupMemberRepository = groupMemberRepository;
+    }
 
     @GetMapping
     public ResponseEntity<List<DirectMessage>> getMyMessages(@RequestHeader("X-User-Id") Long userId) {

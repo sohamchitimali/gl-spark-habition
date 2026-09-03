@@ -53,6 +53,7 @@ public class RuleBasedFallbackEngine {
      * @param unsubscribeToken The signed token for the unsubscribe link.
      * @return A fully composed plaintext email body string.
      */
+    @SuppressWarnings("unchecked")
     public EmailContent buildEmail(String username,
                                   Map<String, Object> personalSignals,
                                   java.util.List<Map<String, Object>> groupSignals,

@@ -6,7 +6,6 @@ import com.meilisearch.sdk.Client;
 import com.meilisearch.sdk.Index;
 import com.meilisearch.sdk.SearchRequest;
 import com.meilisearch.sdk.model.Searchable;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -27,8 +26,11 @@ public class GroupSearchService {
     private Client client;
     private Index groupIndex;
 
-    @Autowired
-    private GroupRepository groupRepository;
+    private final GroupRepository groupRepository;
+
+    public GroupSearchService(GroupRepository groupRepository) {
+        this.groupRepository = groupRepository;
+    }
 
     @PostConstruct
     public void init() {
@@ -51,9 +53,14 @@ public class GroupSearchService {
                     .build();
                     
             Searchable searchResult = groupIndex.search(request);
-            List<Long> matchedIds = searchResult.getHits().stream()
-                    .map(hit -> Double.valueOf(((java.util.Map<?, ?>) hit).get("id").toString()).longValue())
-                    .collect(Collectors.toList());
+            List<Long> matchedIds = new ArrayList<>();
+            if (searchResult != null && searchResult.getHits() != null) {
+                for (Object hit : searchResult.getHits()) {
+                    if (hit instanceof Map<?, ?> hitMap && hitMap.containsKey("id")) {
+                        matchedIds.add(Double.valueOf(hitMap.get("id").toString()).longValue());
+                    }
+                }
+            }
 
             if (matchedIds.isEmpty()) return Collections.emptyList();
 

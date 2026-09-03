@@ -2,7 +2,6 @@ package com.gl.app.AuthService.controller;
 
 import com.gl.app.AuthService.dto.FriendshipDto;
 import com.gl.app.AuthService.service.FriendshipService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,8 +11,11 @@ import java.util.List;
 @RequestMapping("/auth/friends")
 public class FriendshipController {
 
-    @Autowired
-    private FriendshipService friendshipService;
+    private final FriendshipService friendshipService;
+
+    public FriendshipController(FriendshipService friendshipService) {
+        this.friendshipService = friendshipService;
+    }
 
     @PostMapping("/request/{username}")
     public ResponseEntity<FriendshipDto> sendFriendRequest(

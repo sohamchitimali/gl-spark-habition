@@ -11,7 +11,6 @@ import com.gl.app.GroupService.repository.GroupJoinRequestRepository;
 import com.gl.app.GroupService.repository.DirectMessageRepository;
 import com.gl.app.GroupService.entity.RequestStatus;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -29,26 +28,29 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GroupService {
 
-    @Autowired
-    private GroupRepository groupRepository;
+    private final GroupRepository groupRepository;
+    private final GroupMemberRepository groupMemberRepository;
+    private final GroupHabitRepository groupHabitRepository;
+    private final GroupJoinRequestRepository groupJoinRequestRepository;
+    private final DirectMessageRepository directMessageRepository;
+    private final MeilisearchSyncService meilisearchSyncService;
+    private final com.gl.app.GroupService.repository.TagRepository tagRepository;
 
-    @Autowired
-    private GroupMemberRepository groupMemberRepository;
-
-    @Autowired
-    private GroupHabitRepository groupHabitRepository;
-
-    @Autowired
-    private GroupJoinRequestRepository groupJoinRequestRepository;
-
-    @Autowired
-    private DirectMessageRepository directMessageRepository;
-
-    @Autowired
-    private MeilisearchSyncService meilisearchSyncService;
-
-    @Autowired
-    private com.gl.app.GroupService.repository.TagRepository tagRepository;
+    public GroupService(GroupRepository groupRepository,
+                        GroupMemberRepository groupMemberRepository,
+                        GroupHabitRepository groupHabitRepository,
+                        GroupJoinRequestRepository groupJoinRequestRepository,
+                        DirectMessageRepository directMessageRepository,
+                        MeilisearchSyncService meilisearchSyncService,
+                        com.gl.app.GroupService.repository.TagRepository tagRepository) {
+        this.groupRepository = groupRepository;
+        this.groupMemberRepository = groupMemberRepository;
+        this.groupHabitRepository = groupHabitRepository;
+        this.groupJoinRequestRepository = groupJoinRequestRepository;
+        this.directMessageRepository = directMessageRepository;
+        this.meilisearchSyncService = meilisearchSyncService;
+        this.tagRepository = tagRepository;
+    }
 
     /**
      * Creates a new habit group owned by the given user.

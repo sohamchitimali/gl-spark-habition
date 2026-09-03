@@ -9,7 +9,6 @@ import com.gl.app.AuthService.repository.UserProfileRepository;
 import com.gl.app.AuthService.repository.TagRepository;
 import com.gl.app.AuthService.entity.Tag;
 import com.gl.app.AuthService.security.JwtUtil;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -22,23 +21,26 @@ import com.gl.app.AuthService.dto.UserProfileDto;
 @Service
 public class UserService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
+    private final TagRepository tagRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+    private final MeilisearchSyncService meilisearchSyncService;
 
-    @Autowired
-    private UserProfileRepository userProfileRepository;
-
-    @Autowired
-    private TagRepository tagRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private JwtUtil jwtUtil;
-
-    @Autowired
-    private MeilisearchSyncService meilisearchSyncService;
+    public UserService(UserRepository userRepository,
+                       UserProfileRepository userProfileRepository,
+                       TagRepository tagRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtUtil jwtUtil,
+                       MeilisearchSyncService meilisearchSyncService) {
+        this.userRepository = userRepository;
+        this.userProfileRepository = userProfileRepository;
+        this.tagRepository = tagRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
+        this.meilisearchSyncService = meilisearchSyncService;
+    }
 
     private static class UsernameReservation {
         String sessionId;

@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -97,7 +98,8 @@ class HabitServiceTest {
         Habit habit = new Habit(habitId, "Morning Run", "Run every morning", userId, null, null, null);
 
         when(habitRepository.findById(habitId)).thenReturn(Optional.of(habit));
-        when(completionRepository.existsByHabitIdAndUserIdAndCompletionDate(habitId, userId, LocalDate.now()))
+        LocalDate today = LocalDate.now(ZoneId.of("UTC"));
+        when(completionRepository.existsByHabitIdAndUserIdAndCompletionDate(habitId, userId, today))
                 .thenReturn(true);
 
         // Act & Assert
@@ -117,9 +119,10 @@ class HabitServiceTest {
         Habit mockHabit = new Habit(1L, "Morning Run", "Run every morning", userId, null, null, null);
         when(habitRepository.findByUserId(userId)).thenReturn(List.of(mockHabit));
         
+        LocalDate today = LocalDate.now(ZoneId.of("UTC"));
         when(snapshotRepository.findPersonalEarnedSnapshotsDesc(userId)).thenReturn(List.of(
-            new com.gl.app.HabitService.entity.DailyStreakSnapshot(1L, userId, null, LocalDate.now().minusDays(1), true, 1, 1),
-            new com.gl.app.HabitService.entity.DailyStreakSnapshot(2L, userId, null, LocalDate.now().minusDays(2), true, 1, 1)
+            new com.gl.app.HabitService.entity.DailyStreakSnapshot(1L, userId, null, today.minusDays(1), true, 1, 1),
+            new com.gl.app.HabitService.entity.DailyStreakSnapshot(2L, userId, null, today.minusDays(2), true, 1, 1)
         ));
         when(completionRepository.existsByHabitIdAndUserIdAndCompletionDate(anyLong(), anyLong(), any()))
             .thenReturn(true);
@@ -137,7 +140,7 @@ class HabitServiceTest {
     void getHeatmap_shouldReturnDailyCompletionPercentages() {
         // Arrange
         Long userId = 10L;
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneId.of("UTC"));
         when(heatmapRecordRepository.findByUserIdAndGroupIdIsNullOrderByRecordDateDesc(userId))
                 .thenReturn(List.of(
                         new com.gl.app.HabitService.entity.HeatmapRecord(1L, userId, null, today, 4, 2, 50),

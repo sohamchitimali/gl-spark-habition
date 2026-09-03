@@ -3,7 +3,6 @@ package com.gl.app.GroupService.controller;
 import com.gl.app.GroupService.entity.GroupJoinRequest;
 import com.gl.app.GroupService.entity.DirectMessage;
 import com.gl.app.GroupService.service.JoinRequestService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,8 +14,11 @@ import java.util.Map;
 @RequestMapping("/groups/{groupId}/join-requests")
 public class GroupJoinRequestController {
 
-    @Autowired
-    private JoinRequestService joinRequestService;
+    private final JoinRequestService joinRequestService;
+
+    public GroupJoinRequestController(JoinRequestService joinRequestService) {
+        this.joinRequestService = joinRequestService;
+    }
 
     @PostMapping
     public ResponseEntity<GroupJoinRequest> requestToJoin(

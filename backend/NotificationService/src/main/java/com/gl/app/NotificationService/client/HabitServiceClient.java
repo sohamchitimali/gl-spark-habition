@@ -12,18 +12,18 @@ import java.util.Map;
 public interface HabitServiceClient {
 
     @GetMapping("/habits/users/{userId}/completion-status-today")
-    List<Map<String, Object>> getCompletionStatusToday(@PathVariable("userId") String userId);
+    List<Map<String, Object>> getCompletionStatusToday(@PathVariable String userId);
 
     @GetMapping("/habits/consistency/personal")
-    Map<String, Object> getPersonalConsistency(@RequestParam("userId") String userId);
+    Map<String, Object> getPersonalConsistency(@RequestParam String userId);
 
     @GetMapping("/habits/users/{userId}/daily-completion")
-    Map<String, Object> getPersonalDailyCompletion(@PathVariable("userId") String userId, @RequestParam("date") String date);
+    Map<String, Object> getPersonalDailyCompletion(@PathVariable String userId, @RequestParam String date);
 
     @GetMapping("/habits/users/{memberId}/group/{groupId}/daily-completion")
-    Map<String, Object> getGroupMemberDailyCompletion(@PathVariable("memberId") String memberId, @PathVariable("groupId") String groupId, @RequestParam("date") String date);
+    Map<String, Object> getGroupMemberDailyCompletion(@PathVariable String memberId, @PathVariable String groupId, @RequestParam String date);
 
     @GetMapping("/habits/groups/{groupId}/daily-completion")
-    Map<String, Object> getGroupDailyCompletion(@PathVariable("groupId") String groupId, @RequestParam("date") String date);
+    Map<String, Object> getGroupDailyCompletion(@PathVariable String groupId, @RequestParam String date);
 
 }

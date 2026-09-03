@@ -4,7 +4,6 @@ import com.gl.app.GroupService.dto.*;
 import com.gl.app.GroupService.service.GroupService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,17 +20,20 @@ import java.util.List;
 @Slf4j
 public class GroupController {
 
-    @Autowired
-    private GroupService groupService;
+    private final GroupService groupService;
+    private final com.gl.app.GroupService.service.GroupSearchService groupSearchService;
+    private final com.gl.app.GroupService.service.JoinRequestService joinRequestService;
+    private final com.gl.app.GroupService.service.GroupMembershipModerationService groupMembershipModerationService;
 
-    @Autowired
-    private com.gl.app.GroupService.service.GroupSearchService groupSearchService;
-
-    @Autowired
-    private com.gl.app.GroupService.service.JoinRequestService joinRequestService;
-
-    @Autowired
-    private com.gl.app.GroupService.service.GroupMembershipModerationService groupMembershipModerationService;
+    public GroupController(GroupService groupService,
+                           com.gl.app.GroupService.service.GroupSearchService groupSearchService,
+                           com.gl.app.GroupService.service.JoinRequestService joinRequestService,
+                           com.gl.app.GroupService.service.GroupMembershipModerationService groupMembershipModerationService) {
+        this.groupService = groupService;
+        this.groupSearchService = groupSearchService;
+        this.joinRequestService = joinRequestService;
+        this.groupMembershipModerationService = groupMembershipModerationService;
+    }
 
     /**
      * Creates a new habit group.

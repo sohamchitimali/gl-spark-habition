@@ -13,7 +13,6 @@ import com.gl.app.HabitService.repository.HabitRepository;
 import com.gl.app.HabitService.repository.HabitTaskRepository;
 import com.gl.app.HabitService.repository.HeatmapRecordRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -41,26 +40,29 @@ public class HabitService {
     private static final int STREAK_BONUS_COINS = 50;
     private static final int STREAK_BONUS_INTERVAL = 7;
 
-    @Autowired
-    private HabitRepository habitRepository;
+    private final HabitRepository habitRepository;
+    private final HabitCompletionRepository completionRepository;
+    private final DailyStreakSnapshotRepository snapshotRepository;
+    private final HabitTaskRepository taskRepository;
+    private final GroupCoinClient groupCoinClient;
+    private final GroupServiceClient groupServiceClient;
+    private final HeatmapRecordRepository heatmapRecordRepository;
 
-    @Autowired
-    private HabitCompletionRepository completionRepository;
-
-    @Autowired
-    private DailyStreakSnapshotRepository snapshotRepository;
-
-    @Autowired
-    private HabitTaskRepository taskRepository;
-
-    @Autowired
-    private GroupCoinClient groupCoinClient;
-
-    @Autowired
-    private GroupServiceClient groupServiceClient;
-
-    @Autowired
-    private HeatmapRecordRepository heatmapRecordRepository;
+    public HabitService(HabitRepository habitRepository,
+                        HabitCompletionRepository completionRepository,
+                        DailyStreakSnapshotRepository snapshotRepository,
+                        HabitTaskRepository taskRepository,
+                        GroupCoinClient groupCoinClient,
+                        GroupServiceClient groupServiceClient,
+                        HeatmapRecordRepository heatmapRecordRepository) {
+        this.habitRepository = habitRepository;
+        this.completionRepository = completionRepository;
+        this.snapshotRepository = snapshotRepository;
+        this.taskRepository = taskRepository;
+        this.groupCoinClient = groupCoinClient;
+        this.groupServiceClient = groupServiceClient;
+        this.heatmapRecordRepository = heatmapRecordRepository;
+    }
 
     // ─── Habit CRUD ───────────────────────────────────────────────────────────
 

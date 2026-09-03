@@ -8,5 +8,5 @@ import org.springframework.web.bind.annotation.PathVariable;
 public interface HabitServiceClient {
 
     @DeleteMapping("/api/habits/groups/{groupId}/users/{userId}")
-    void removeUserFromGroup(@PathVariable("groupId") Long groupId, @PathVariable("userId") Long userId);
+    void removeUserFromGroup(@PathVariable Long groupId, @PathVariable Long userId);
 }

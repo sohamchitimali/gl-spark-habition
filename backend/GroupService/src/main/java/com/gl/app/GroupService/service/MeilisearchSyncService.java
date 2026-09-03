@@ -5,7 +5,6 @@ import com.gl.app.GroupService.repository.GroupRepository;
 import com.meilisearch.sdk.Client;
 import com.meilisearch.sdk.Config;
 import com.meilisearch.sdk.Index;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -29,11 +28,13 @@ public class MeilisearchSyncService {
     private Client client;
     private Index groupIndex;
 
-    @Autowired
-    private GroupRepository groupRepository;
+    private final GroupRepository groupRepository;
+    private final ObjectMapper objectMapper;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    public MeilisearchSyncService(GroupRepository groupRepository, ObjectMapper objectMapper) {
+        this.groupRepository = groupRepository;
+        this.objectMapper = objectMapper;
+    }
 
     @PostConstruct
     public void init() {

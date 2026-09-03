@@ -10,9 +10,9 @@ import java.util.Map;
 public interface AuthServiceClient {
 
     @GetMapping("/auth/users/{userId}/meta")
-    Map<String, Object> getUserMeta(@PathVariable("userId") String userId);
+    Map<String, Object> getUserMeta(@PathVariable String userId);
 
     @org.springframework.web.bind.annotation.PostMapping("/auth/users/{userId}/unsubscribe")
-    void unsubscribeUser(@PathVariable("userId") String userId);
+    void unsubscribeUser(@PathVariable String userId);
 
 }

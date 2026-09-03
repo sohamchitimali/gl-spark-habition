@@ -1,7 +1,6 @@
 package com.gl.app.AuthService.service;
 
 import com.gl.app.AuthService.repository.EmailOutboxRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Scheduled;

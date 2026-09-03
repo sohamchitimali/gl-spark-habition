@@ -8,7 +8,6 @@ import com.gl.app.GroupService.entity.DirectMessage;
 import com.gl.app.GroupService.entity.Discoverability;
 import com.gl.app.GroupService.repository.GroupRepository;
 import com.gl.app.GroupService.repository.GroupMemberRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -22,17 +21,20 @@ import java.util.List;
 @Service
 public class JoinRequestService {
 
-    @Autowired
-    private GroupJoinRequestRepository joinRequestRepository;
+    private final GroupJoinRequestRepository joinRequestRepository;
+    private final DirectMessageRepository dmRepository;
+    private final GroupRepository groupRepository;
+    private final GroupMemberRepository memberRepository;
 
-    @Autowired
-    private DirectMessageRepository dmRepository;
-
-    @Autowired
-    private GroupRepository groupRepository;
-
-    @Autowired
-    private GroupMemberRepository memberRepository;
+    public JoinRequestService(GroupJoinRequestRepository joinRequestRepository,
+                              DirectMessageRepository dmRepository,
+                              GroupRepository groupRepository,
+                              GroupMemberRepository memberRepository) {
+        this.joinRequestRepository = joinRequestRepository;
+        this.dmRepository = dmRepository;
+        this.groupRepository = groupRepository;
+        this.memberRepository = memberRepository;
+    }
 
     public GroupJoinRequest requestToJoin(Long groupId, Long userId, String initialMessage) {
         Group group = groupRepository.findById(groupId)

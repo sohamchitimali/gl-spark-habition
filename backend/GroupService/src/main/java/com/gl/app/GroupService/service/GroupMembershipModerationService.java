@@ -8,7 +8,6 @@ import com.gl.app.GroupService.repository.GroupMemberRepository;
 import com.gl.app.GroupService.repository.GroupBlockRepository;
 import com.gl.app.GroupService.client.HabitServiceClient;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -17,20 +16,23 @@ import org.springframework.web.server.ResponseStatusException;
 @Slf4j
 public class GroupMembershipModerationService {
 
-    @Autowired
-    private GroupRepository groupRepository;
+    private final GroupRepository groupRepository;
+    private final GroupMemberRepository groupMemberRepository;
+    private final GroupBlockRepository groupBlockRepository;
+    private final HabitServiceClient habitServiceClient;
+    private final MeilisearchSyncService meilisearchSyncService;
 
-    @Autowired
-    private GroupMemberRepository groupMemberRepository;
-
-    @Autowired
-    private GroupBlockRepository groupBlockRepository;
-
-    @Autowired
-    private HabitServiceClient habitServiceClient;
-
-    @Autowired
-    private MeilisearchSyncService meilisearchSyncService;
+    public GroupMembershipModerationService(GroupRepository groupRepository,
+                                           GroupMemberRepository groupMemberRepository,
+                                           GroupBlockRepository groupBlockRepository,
+                                           HabitServiceClient habitServiceClient,
+                                           MeilisearchSyncService meilisearchSyncService) {
+        this.groupRepository = groupRepository;
+        this.groupMemberRepository = groupMemberRepository;
+        this.groupBlockRepository = groupBlockRepository;
+        this.habitServiceClient = habitServiceClient;
+        this.meilisearchSyncService = meilisearchSyncService;
+    }
 
     @org.springframework.transaction.annotation.Transactional
     public void kickMember(Long groupId, Long targetUserId, Long actingUserId) {

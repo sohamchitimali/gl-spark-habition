@@ -5,7 +5,6 @@ import com.gl.app.AuthService.dto.AuthResponseDto;
 import com.gl.app.AuthService.dto.RefreshRequestDto;
 import com.gl.app.AuthService.dto.ProfileDto;
 import com.gl.app.AuthService.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -14,11 +13,13 @@ import java.util.List;
 @RequestMapping("/auth")
 public class AuthController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
+    private final com.gl.app.AuthService.service.UserSearchService userSearchService;
 
-    @Autowired
-    private com.gl.app.AuthService.service.UserSearchService userSearchService;
+    public AuthController(UserService userService, com.gl.app.AuthService.service.UserSearchService userSearchService) {
+        this.userService = userService;
+        this.userSearchService = userSearchService;
+    }
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponseDto> register(@RequestBody AuthRequestDto request) {

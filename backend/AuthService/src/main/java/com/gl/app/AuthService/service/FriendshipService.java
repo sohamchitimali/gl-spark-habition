@@ -7,7 +7,6 @@ import com.gl.app.AuthService.entity.FriendshipStatus;
 import com.gl.app.AuthService.entity.User;
 import com.gl.app.AuthService.repository.FriendshipRepository;
 import com.gl.app.AuthService.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -19,14 +18,17 @@ import java.util.stream.Collectors;
 @Service
 public class FriendshipService {
 
-    @Autowired
-    private FriendshipRepository friendshipRepository;
+    private final FriendshipRepository friendshipRepository;
+    private final UserRepository userRepository;
+    private final UserService userService;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private UserService userService;
+    public FriendshipService(FriendshipRepository friendshipRepository,
+                             UserRepository userRepository,
+                             UserService userService) {
+        this.friendshipRepository = friendshipRepository;
+        this.userRepository = userRepository;
+        this.userService = userService;
+    }
 
     public FriendshipDto sendFriendRequest(Long requesterId, String addresseeUsername) {
         User requester = userRepository.findById(requesterId)

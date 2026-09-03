@@ -8,7 +8,6 @@ public interface ConsistencyStatsRepository extends JpaRepository<ConsistencySta
 
     Optional<ConsistencyStats> findByEntityTypeAndEntityIdAndScope(String entityType, String entityId, String scope);
 
-    Optional<ConsistencyStats> findByEntityTypeAndEntityIdAndScopeAndMemberId(
-            String entityType, String entityId, String scope, String memberId);
+    Optional<ConsistencyStats> findByEntityTypeAndEntityIdAndScopeAndMemberId(String entityType, String entityId, String scope, String memberId);
 }
 

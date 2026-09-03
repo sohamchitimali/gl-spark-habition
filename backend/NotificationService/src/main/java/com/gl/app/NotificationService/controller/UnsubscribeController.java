@@ -41,8 +41,8 @@ public class UnsubscribeController {
      */
     @GetMapping(value = "/unsubscribe", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> unsubscribeConfirmationPage(
-            @RequestParam("userId") String userId,
-            @RequestParam("token") String token) {
+            @RequestParam String userId,
+            @RequestParam String token) {
 
         String html = """
                 <!DOCTYPE html>
@@ -89,8 +89,8 @@ public class UnsubscribeController {
      */
     @PostMapping("/unsubscribe")
     public ResponseEntity<String> processUnsubscribe(
-            @RequestParam("userId") String userId,
-            @RequestParam("token") String token) {
+            @RequestParam String userId,
+            @RequestParam String token) {
 
         log.info("Processing unsubscribe for userId: {}", userId);
 

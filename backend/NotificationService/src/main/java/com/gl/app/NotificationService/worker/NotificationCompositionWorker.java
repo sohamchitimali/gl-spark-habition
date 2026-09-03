@@ -101,6 +101,7 @@ public class NotificationCompositionWorker {
         return notificationRepository.saveAll(pending);
     }
 
+    @SuppressWarnings("unchecked")
     private void processSingle(Notification notification, Map<String, Integer> liveScoreCache) {
         String userId = notification.getUserId();
         log.info("Composing notification {} for user {}", notification.getId(), userId);
@@ -475,6 +476,7 @@ public class NotificationCompositionWorker {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private int fetchLiveGroupScore(String userId, String groupId, Map<String, Integer> liveScoreCache) {
         String cacheKey = userId + ":" + groupId;
         if (liveScoreCache.containsKey(cacheKey)) {

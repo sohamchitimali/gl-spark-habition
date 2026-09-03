@@ -10,6 +10,6 @@ import java.util.Map;
 public interface GroupServiceClient {
 
     @GetMapping("/coins/groups/{groupId}/leaderboard")
-    Map<String, Object> getLeaderboard(@PathVariable("groupId") String groupId);
+    Map<String, Object> getLeaderboard(@PathVariable String groupId);
 
 }

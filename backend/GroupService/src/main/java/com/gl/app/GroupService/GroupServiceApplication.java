@@ -18,7 +18,7 @@ public class GroupServiceApplication {
 	}
 
 	@org.springframework.context.annotation.Bean
-	public org.springframework.boot.CommandLineRunner alterTable(org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
+	org.springframework.boot.CommandLineRunner alterTable(org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
 		return args -> {
 			try {
 				jdbcTemplate.execute("ALTER TABLE direct_messages ALTER COLUMN receiver_id DROP NOT NULL;");
