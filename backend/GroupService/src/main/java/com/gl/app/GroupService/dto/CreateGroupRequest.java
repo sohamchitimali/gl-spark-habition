@@ -23,4 +23,8 @@ public class CreateGroupRequest {
     
     private java.util.List<Long> inviteFriendIds;
     private Boolean notificationsEnabled;
+    private Double latitude;
+    private Double longitude;
+    private String addressDisplay;
+    private java.util.List<String> tags;
 }

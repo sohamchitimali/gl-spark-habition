@@ -34,4 +34,10 @@ public class GroupResponse {
     private String description;
     private String duration;
     private LocalDateTime competitionEndDate;
+
+    private Double latitude;
+    private Double longitude;
+    private String addressDisplay;
+    private Integer memberCount;
+    private List<String> tags;
 }

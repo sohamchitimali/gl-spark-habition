@@ -90,6 +90,25 @@ public class GroupService {
             group.setCompetitionActive(false);
         }
 
+        if (request.getLatitude() != null) {
+            group.setLatitude(request.getLatitude());
+        }
+        if (request.getLongitude() != null) {
+            group.setLongitude(request.getLongitude());
+        }
+        if (request.getAddressDisplay() != null) {
+            group.setAddressDisplay(request.getAddressDisplay());
+        }
+        if (request.getTags() != null) {
+            for (String tagStr : request.getTags()) {
+                if (tagStr != null && !tagStr.trim().isEmpty()) {
+                    com.gl.app.GroupService.entity.Tag tag = tagRepository.findByNameIgnoreCase(tagStr.toLowerCase().trim())
+                            .orElseGet(() -> tagRepository.save(new com.gl.app.GroupService.entity.Tag(null, tagStr.toLowerCase().trim(), null)));
+                    group.getTags().add(tag);
+                }
+            }
+        }
+
         group = groupRepository.save(group);
 
         // Automatically add owner as first member and admin
@@ -307,6 +326,15 @@ public class GroupService {
         response.setDescription(group.getDescription());
         response.setDuration(group.getDuration());
         response.setCompetitionEndDate(group.getCompetitionEndDate());
+        response.setLatitude(group.getLatitude());
+        response.setLongitude(group.getLongitude());
+        response.setAddressDisplay(group.getAddressDisplay());
+        response.setMemberCount(memberIds.size());
+        if (group.getTags() != null) {
+            response.setTags(group.getTags().stream().map(com.gl.app.GroupService.entity.Tag::getName).collect(Collectors.toList()));
+        } else {
+            response.setTags(java.util.Collections.emptyList());
+        }
         return response;
     }
 

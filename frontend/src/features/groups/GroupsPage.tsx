@@ -5,6 +5,7 @@ import Loading from '../../components/Loading';
 
 import { getMyGroups, type GroupResponse } from '../../api/groupApi';
 import { useAuth } from '../../auth/AuthContext';
+import { UserIcon, UsersGroupIcon } from '../../components/icons';
 
 const GroupsPage = () => {
   const { userId } = useAuth();
@@ -84,7 +85,7 @@ const GroupsPage = () => {
         {/* Group list */}
         {groups.length === 0 ? (
           <div className="text-center py-20 animate-fade-up delay-200">
-            <div className="text-6xl mb-4">👥</div>
+            <UsersGroupIcon className="w-16 h-16 text-gray-600 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-white mb-2">No groups yet</h3>
             <p style={{ color: '#B4B2A9' }} className="text-sm">Create or join a group to start competing with friends.</p>
           </div>
@@ -105,15 +106,28 @@ const GroupsPage = () => {
                         {group.name[0].toUpperCase()}
                       </div>
                       <div>
-                        <h3 className="font-semibold text-white flex items-center gap-2">
-                          {group.name}
+                        <div className="flex items-center flex-wrap gap-2">
+                          <h3 className="font-semibold text-white text-base">
+                            {group.name}
+                          </h3>
+                          {group.visibility === 'PUBLIC' && (
+                            <span className="inline-flex items-center justify-center h-5 px-2.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
+                              Public
+                            </span>
+                          )}
+                          {group.visibility === 'OPEN' && (
+                            <span className="inline-flex items-center justify-center h-5 px-2.5 rounded-full text-[10px] font-semibold bg-cyan-500/20 text-cyan-400 border border-cyan-500/20">
+                              Open
+                            </span>
+                          )}
                           {group.hasPendingRequests && group.adminIds?.includes(userId || 0) && (
                             <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" title="Pending Join Requests" />
                           )}
-                        </h3>
-                        <div className="flex items-center gap-3 mt-0.5">
-                          <span className="text-xs" style={{ color: '#B4B2A9' }}>
-                            👥 {group.memberIds?.length ?? 1} member{group.memberIds?.length !== 1 ? 's' : ''}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: '#B4B2A9' }}>
+                            <UserIcon className="w-3.5 h-3.5 text-gray-400" />
+                            {group.memberIds?.length ?? group.memberCount ?? 1} member{(group.memberIds?.length ?? group.memberCount) !== 1 ? 's' : ''}
                           </span>
                           <button
                             onClick={(e) => { e.preventDefault(); handleCopyCode(group.inviteCode); }}

@@ -7,6 +7,7 @@ import { sendMessage } from '../../api/chatApi';
 import Loading from '../../components/Loading';
 import Navbar from '../../components/Navbar';
 import LocationSelector from '../../components/LocationSelector';
+import { SparklesIcon } from '../../components/icons';
 
 const CreateGroupPage = () => {
   const navigate = useNavigate();
@@ -239,57 +240,152 @@ const CreateGroupPage = () => {
                   </label>
                 </div>
                 
-                {!isIndefinite && (
-                  <div className="mb-4 text-xs p-3 rounded-lg border" style={{ background: 'rgba(83, 74, 183, 0.1)', borderColor: 'rgba(83, 74, 183, 0.3)', color: '#AFA9EC' }}>
-                    <span className="font-semibold block mb-1">Global Timezone Alignment:</span>
-                    To ensure fairness across all members globally, the competition always ends exactly at 12:00 UTC on the target date. 
-                    This means the exact time remaining may vary by a few hours from your local time.
-                  </div>
-                )}
                 
                 {!isIndefinite && (
-                  <div className="grid grid-cols-2 gap-3 animate-fade-in">
-                    <div>
-                      <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Years</label>
-                      <input type="number" min="0" value={years} onChange={e => setYears(Number(e.target.value))}
-                        className="w-full px-3 py-2 rounded-xl text-white outline-none transition-all"
-                        style={{ background: '#363634', border: '1px solid #424240' }}
-                        onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
-                        onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
-                      />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-fade-in">
+                    {/* Years */}
+                    <div className="p-3 rounded-xl border flex flex-col items-center" style={{ background: '#1a1a18', borderColor: '#363634' }}>
+                      <span className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#B4B2A9' }}>Years</span>
+                      <div className="flex items-center w-full justify-between rounded-lg border p-1" style={{ background: '#2C2C2A', borderColor: '#424240' }}>
+                        <button
+                          type="button"
+                          onClick={() => setYears(prev => Math.max(0, prev - 1))}
+                          disabled={years <= 0}
+                          className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none disabled:opacity-20 disabled:cursor-not-allowed"
+                          aria-label="Decrease years"
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          min="0"
+                          value={years}
+                          onChange={e => {
+                            const val = parseInt(e.target.value, 10);
+                            setYears(isNaN(val) ? 0 : Math.max(0, val));
+                          }}
+                          className="w-12 text-center font-bold text-white bg-transparent outline-none text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setYears(prev => prev + 1)}
+                          className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none"
+                          aria-label="Increase years"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Months</label>
-                      <input type="number" min="0" value={months} onChange={e => setMonths(Number(e.target.value))}
-                        className="w-full px-3 py-2 rounded-xl text-white outline-none transition-all"
-                        style={{ background: '#363634', border: '1px solid #424240' }}
-                        onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
-                        onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
-                      />
+
+                    {/* Months */}
+                    <div className="p-3 rounded-xl border flex flex-col items-center" style={{ background: '#1a1a18', borderColor: '#363634' }}>
+                      <span className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#B4B2A9' }}>Months</span>
+                      <div className="flex items-center w-full justify-between rounded-lg border p-1" style={{ background: '#2C2C2A', borderColor: '#424240' }}>
+                        <button
+                          type="button"
+                          onClick={() => setMonths(prev => Math.max(0, prev - 1))}
+                          disabled={months <= 0}
+                          className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none disabled:opacity-20 disabled:cursor-not-allowed"
+                          aria-label="Decrease months"
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          min="0"
+                          value={months}
+                          onChange={e => {
+                            const val = parseInt(e.target.value, 10);
+                            setMonths(isNaN(val) ? 0 : Math.max(0, val));
+                          }}
+                          className="w-12 text-center font-bold text-white bg-transparent outline-none text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setMonths(prev => prev + 1)}
+                          className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none"
+                          aria-label="Increase months"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Weeks</label>
-                      <input type="number" min="0" value={weeks} onChange={e => setWeeks(Number(e.target.value))}
-                        className="w-full px-3 py-2 rounded-xl text-white outline-none transition-all"
-                        style={{ background: '#363634', border: '1px solid #424240' }}
-                        onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
-                        onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
-                      />
+
+                    {/* Weeks */}
+                    <div className="p-3 rounded-xl border flex flex-col items-center" style={{ background: '#1a1a18', borderColor: '#363634' }}>
+                      <span className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#B4B2A9' }}>Weeks</span>
+                      <div className="flex items-center w-full justify-between rounded-lg border p-1" style={{ background: '#2C2C2A', borderColor: '#424240' }}>
+                        <button
+                          type="button"
+                          onClick={() => setWeeks(prev => Math.max(0, prev - 1))}
+                          disabled={weeks <= 0}
+                          className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none disabled:opacity-20 disabled:cursor-not-allowed"
+                          aria-label="Decrease weeks"
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          min="0"
+                          value={weeks}
+                          onChange={e => {
+                            const val = parseInt(e.target.value, 10);
+                            setWeeks(isNaN(val) ? 0 : Math.max(0, val));
+                          }}
+                          className="w-12 text-center font-bold text-white bg-transparent outline-none text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setWeeks(prev => prev + 1)}
+                          className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none"
+                          aria-label="Increase weeks"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Days</label>
-                      <input type="number" min="0" value={days} onChange={e => setDays(Number(e.target.value))}
-                        className="w-full px-3 py-2 rounded-xl text-white outline-none transition-all"
-                        style={{ background: '#363634', border: '1px solid #424240' }}
-                        onFocus={(e) => { e.target.style.borderColor = '#534AB7'; }}
-                        onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
-                      />
+
+                    {/* Days */}
+                    <div className="p-3 rounded-xl border flex flex-col items-center" style={{ background: '#1a1a18', borderColor: '#363634' }}>
+                      <span className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#B4B2A9' }}>Days</span>
+                      <div className="flex items-center w-full justify-between rounded-lg border p-1" style={{ background: '#2C2C2A', borderColor: '#424240' }}>
+                        <button
+                          type="button"
+                          onClick={() => setDays(prev => Math.max(0, prev - 1))}
+                          disabled={days <= 0}
+                          className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none disabled:opacity-20 disabled:cursor-not-allowed"
+                          aria-label="Decrease days"
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          min="0"
+                          value={days}
+                          onChange={e => {
+                            const val = parseInt(e.target.value, 10);
+                            setDays(isNaN(val) ? 0 : Math.max(0, val));
+                          }}
+                          className="w-12 text-center font-bold text-white bg-transparent outline-none text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setDays(prev => prev + 1)}
+                          className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none"
+                          aria-label="Increase days"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-                {!isIndefinite && (
-                  <div className="mt-3 p-3 rounded-lg text-xs" style={{ background: 'rgba(83, 74, 183, 0.1)', color: '#9d96eb', border: '1px solid rgba(83, 74, 183, 0.2)' }}>
-                    <strong>Note:</strong> To ensure fairness across all time zones globally, competition timers end at Midnight (UTC 12:00:00) of your final calendar day. The exact chosen timer won't be perfectly accurate as it is adjusted to take into account the timezones of all users.
                   </div>
                 )}
               </div>
@@ -331,12 +427,6 @@ const CreateGroupPage = () => {
                 </div>
               )}
 
-              <div className="p-4 rounded-xl" style={{ background: 'rgba(83,74,183,0.1)', border: '1px solid rgba(83,74,183,0.2)' }}>
-                <p className="text-xs" style={{ color: '#AFA9EC' }}>
-                  ✨ After creating the group, you can add habits and start a time-bound competition with your friends.
-                </p>
-              </div>
-
               {/* Notification Toggle */}
               <div className="flex items-center justify-between p-4 rounded-xl" style={{ background: '#1a1a18', border: '1px solid #363634' }}>
                 <div>
@@ -371,8 +461,15 @@ const CreateGroupPage = () => {
                   opacity: loading ? 0.7 : 1
                 }}
               >
-                {loading ? <Loading size={5} padding="0" idleColor="transparent" activeColor="#FFF" /> : 'Create Group'}
+                {loading ? <Loading size={5} padding="0" idleColor="transparent" activeColor="#FFF" /> : 'Create Habit Group'}
               </button>
+
+              <div className="p-4 rounded-xl flex items-start gap-2.5" style={{ background: 'rgba(83,74,183,0.1)', border: '1px solid rgba(83,74,183,0.2)' }}>
+                <SparklesIcon className="w-4 h-4 text-[#AFA9EC] shrink-0 mt-0.5" />
+                <p className="text-xs leading-relaxed" style={{ color: '#AFA9EC' }}>
+                  After creating the group, you can add habits and start a time-bound competition with your friends.
+                </p>
+              </div>
             </form>
           </div>
         </div>
