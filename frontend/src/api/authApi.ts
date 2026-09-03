@@ -1,5 +1,4 @@
 import axiosInstance from './axiosConfig';
-import axios from 'axios';
 
 export interface AuthRequest { email: string; password: string; username?: string; otp?: string; }
 export interface AuthResponse { accessToken: string; refreshToken: string; userId: number; }
@@ -21,18 +20,18 @@ export interface Profile {
 }
 
 export const sendOtp = (email: string) =>
-  axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/auth/send-otp`, { email });
+  axiosInstance.post('/auth/send-otp', { email });
 
 export const register = (data: AuthRequest) =>
   axiosInstance.post<AuthResponse>('/auth/register', data);
 
-export const checkUsername = (username: string, sessionId?: string) => {
-  let url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/auth/check-username?username=${encodeURIComponent(username)}`;
-  if (sessionId) {
-    url += `&sessionId=${encodeURIComponent(sessionId)}`;
-  }
-  return axios.get<boolean>(url);
-};
+export const checkUsername = (username: string, sessionId?: string) =>
+  axiosInstance.get<boolean>('/auth/check-username', {
+    params: {
+      username,
+      ...(sessionId ? { sessionId } : {}),
+    },
+  });
 
 export const login = (data: AuthRequest) =>
   axiosInstance.post<AuthResponse>('/auth/login', data);
@@ -65,10 +64,10 @@ export const removeFriend = (friendshipId: number) => axiosInstance.delete(`/aut
 
 // Password Management
 export const forgotPassword = (email: string) =>
-  axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/auth/forgot-password`, { email });
+  axiosInstance.post('/auth/forgot-password', { email });
 
 export const resetPassword = (email: string, otp: string, newPassword: string) =>
-  axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/auth/reset-password`, { email, otp, newPassword });
+  axiosInstance.post('/auth/reset-password', { email, otp, newPassword });
 
 export const changePassword = (currentPassword: string, newPassword: string) =>
   axiosInstance.put('/auth/users/me/password', { currentPassword, newPassword });
