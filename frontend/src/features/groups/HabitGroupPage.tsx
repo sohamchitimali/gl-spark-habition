@@ -1078,32 +1078,151 @@ const GroupDashboardPage = () => {
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 mb-6">
-                <div>
-                  <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Years</label>
-                  <input type="number" min="0" value={dlYears} onChange={e => setDlYears(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl text-white outline-none" style={{ background: '#1A1A18', border: '1px solid #424240' }} />
+                {/* Years */}
+                <div className="p-3 rounded-xl border flex flex-col items-center" style={{ background: '#1a1a18', borderColor: '#363634' }}>
+                  <span className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#B4B2A9' }}>Years</span>
+                  <div className="flex items-center w-full justify-between rounded-lg border p-1" style={{ background: '#2C2C2A', borderColor: '#424240' }}>
+                    <button
+                      type="button"
+                      onClick={() => setDlYears(prev => Math.max(0, prev - 1))}
+                      disabled={dlYears <= 0}
+                      className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none disabled:opacity-20 disabled:cursor-not-allowed"
+                      aria-label="Decrease years"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min="0"
+                      value={dlYears}
+                      onChange={e => {
+                        const val = parseInt(e.target.value, 10);
+                        setDlYears(isNaN(val) ? 0 : Math.max(0, val));
+                      }}
+                      className="w-10 text-center font-bold text-white bg-transparent outline-none text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setDlYears(prev => prev + 1)}
+                      className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none"
+                      aria-label="Increase years"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Months</label>
-                  <input type="number" min="0" value={dlMonths} onChange={e => setDlMonths(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl text-white outline-none" style={{ background: '#1A1A18', border: '1px solid #424240' }} />
+
+                {/* Months */}
+                <div className="p-3 rounded-xl border flex flex-col items-center" style={{ background: '#1a1a18', borderColor: '#363634' }}>
+                  <span className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#B4B2A9' }}>Months</span>
+                  <div className="flex items-center w-full justify-between rounded-lg border p-1" style={{ background: '#2C2C2A', borderColor: '#424240' }}>
+                    <button
+                      type="button"
+                      onClick={() => setDlMonths(prev => Math.max(0, prev - 1))}
+                      disabled={dlMonths <= 0}
+                      className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none disabled:opacity-20 disabled:cursor-not-allowed"
+                      aria-label="Decrease months"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min="0"
+                      value={dlMonths}
+                      onChange={e => {
+                        const val = parseInt(e.target.value, 10);
+                        setDlMonths(isNaN(val) ? 0 : Math.max(0, val));
+                      }}
+                      className="w-10 text-center font-bold text-white bg-transparent outline-none text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setDlMonths(prev => prev + 1)}
+                      className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none"
+                      aria-label="Increase months"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Weeks</label>
-                  <input type="number" min="0" value={dlWeeks} onChange={e => setDlWeeks(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl text-white outline-none" style={{ background: '#1A1A18', border: '1px solid #424240' }} />
+
+                {/* Weeks */}
+                <div className="p-3 rounded-xl border flex flex-col items-center" style={{ background: '#1a1a18', borderColor: '#363634' }}>
+                  <span className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#B4B2A9' }}>Weeks</span>
+                  <div className="flex items-center w-full justify-between rounded-lg border p-1" style={{ background: '#2C2C2A', borderColor: '#424240' }}>
+                    <button
+                      type="button"
+                      onClick={() => setDlWeeks(prev => Math.max(0, prev - 1))}
+                      disabled={dlWeeks <= 0}
+                      className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none disabled:opacity-20 disabled:cursor-not-allowed"
+                      aria-label="Decrease weeks"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min="0"
+                      value={dlWeeks}
+                      onChange={e => {
+                        const val = parseInt(e.target.value, 10);
+                        setDlWeeks(isNaN(val) ? 0 : Math.max(0, val));
+                      }}
+                      className="w-10 text-center font-bold text-white bg-transparent outline-none text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setDlWeeks(prev => prev + 1)}
+                      className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none"
+                      aria-label="Increase weeks"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1" style={{ color: '#B4B2A9' }}>Days</label>
-                  <input type="number" min="0" value={dlDays} onChange={e => setDlDays(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl text-white outline-none" style={{ background: '#1A1A18', border: '1px solid #424240' }} />
+
+                {/* Days */}
+                <div className="p-3 rounded-xl border flex flex-col items-center" style={{ background: '#1a1a18', borderColor: '#363634' }}>
+                  <span className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#B4B2A9' }}>Days</span>
+                  <div className="flex items-center w-full justify-between rounded-lg border p-1" style={{ background: '#2C2C2A', borderColor: '#424240' }}>
+                    <button
+                      type="button"
+                      onClick={() => setDlDays(prev => Math.max(0, prev - 1))}
+                      disabled={dlDays <= 0}
+                      className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none disabled:opacity-20 disabled:cursor-not-allowed"
+                      aria-label="Decrease days"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min="0"
+                      value={dlDays}
+                      onChange={e => {
+                        const val = parseInt(e.target.value, 10);
+                        setDlDays(isNaN(val) ? 0 : Math.max(0, val));
+                      }}
+                      className="w-10 text-center font-bold text-white bg-transparent outline-none text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setDlDays(prev => prev + 1)}
+                      className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all text-lg font-bold select-none"
+                      aria-label="Increase days"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
-
-            <div className="mb-6 p-3 rounded-lg text-xs" style={{ background: 'rgba(83, 74, 183, 0.1)', color: '#9d96eb', border: '1px solid rgba(83, 74, 183, 0.2)' }}>
-              <strong>Note:</strong> To ensure fairness across all time zones globally, competition timers end at Midnight (UTC 12:00:00) of your final calendar day. The exact chosen timer won't be perfectly accurate as it is adjusted to take into account the timezones of all users.
-            </div>
 
             <div className="flex gap-3">
               <button
