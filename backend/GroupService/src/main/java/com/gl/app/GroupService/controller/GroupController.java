@@ -142,6 +142,12 @@ public class GroupController {
                     }
                     return res;
                 })
+                .filter(res -> {
+                    if (userId != null && res.getMemberIds() != null && res.getMemberIds().contains(userId)) {
+                        return false;
+                    }
+                    return true;
+                })
                 .collect(java.util.stream.Collectors.toList());
                 
         return ResponseEntity.ok(responses);

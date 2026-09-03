@@ -4,6 +4,7 @@ import { searchUsers, sendFriendRequest, type Profile, getProfile } from '../../
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Loading from '../../components/Loading';
+import { useAuth } from '../../auth/AuthContext';
 import {
   ChatIcon,
   UserPlusIcon,
@@ -27,6 +28,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 const SearchPage: React.FC = () => {
+  const { userId } = useAuth();
   const [searchParams] = useSearchParams();
   const initialMode = ['ALL', 'PEOPLE', 'GROUPS'].includes(searchParams.get('tab')?.toUpperCase() || '')
     ? (searchParams.get('tab')?.toUpperCase() as 'ALL' | 'PEOPLE' | 'GROUPS')
@@ -77,10 +79,14 @@ const SearchPage: React.FC = () => {
     try {
       if (currentSearchMode === 'ALL' || currentSearchMode === 'GROUPS') {
         const groupRes = await searchGroups(currentQuery, userTags, userLat, userLng, 20, currentSortMode);
-        setGroupResults(groupRes.data);
+        const nonJoinedGroups = groupRes.data.filter(group => {
+          if (!userId) return true;
+          return !group.memberIds || !group.memberIds.includes(userId);
+        });
+        setGroupResults(nonJoinedGroups);
         setJoinStatus(prev => {
           const updated = { ...prev };
-          groupRes.data.forEach(group => {
+          nonJoinedGroups.forEach(group => {
             if (group.currentUserRequested) {
               updated[group.id] = 'Requested';
             }
@@ -107,16 +113,21 @@ const SearchPage: React.FC = () => {
 
   useEffect(() => {
     performSearch(debouncedQuery, searchMode, sortMode);
-  }, [debouncedQuery, searchMode, sortMode, userTags, userLat, userLng]);
+  }, [debouncedQuery, searchMode, sortMode, userTags, userLat, userLng, userId]);
 
   const handleJoinClick = async (group: GroupResponse) => {
     if (group.visibility === 'PUBLIC') {
       try {
         await joinGroup(group.inviteCode);
         setJoinStatus(prev => ({ ...prev, [group.id]: 'Joined' }));
+        showToast('Successfully joined group!');
+        setTimeout(() => {
+          setGroupResults(prev => prev.filter(g => g.id !== group.id));
+        }, 800);
       } catch (err: any) {
         if (err.response?.status === 409) {
           setJoinStatus(prev => ({ ...prev, [group.id]: 'Already a member' }));
+          setGroupResults(prev => prev.filter(g => g.id !== group.id));
         } else if (err.response?.data?.message === 'BLOCKED' || err.response?.data?.error === 'BLOCKED' || err.response?.data?.message?.includes('BLOCKED')) {
           setJoinStatus(prev => ({ ...prev, [group.id]: 'Blocked' }));
           showToast('You have been blocked from this group by its admins.');
@@ -348,9 +359,9 @@ const SearchPage: React.FC = () => {
                             </div>
                             {/* Tags */}
                             {group.tags && group.tags.length > 0 && (
-                              <div className="flex flex-wrap items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
                                 {group.tags.map(tag => (
-                                  <span key={tag} className="px-2 py-0.5 rounded text-[11px] font-medium bg-gray-700/50 text-gray-300">
+                                  <span key={tag} className="px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase tracking-wider" style={{ background: 'rgba(83,74,183,0.3)', border: '1px solid rgba(83,74,183,0.5)' }}>
                                     #{tag}
                                   </span>
                                 ))}

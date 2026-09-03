@@ -87,7 +87,7 @@ public class Group {
         }
     }
     
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "group_tags",
         joinColumns = @JoinColumn(name = "group_id"),

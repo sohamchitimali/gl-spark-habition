@@ -117,13 +117,22 @@ const GroupJoinRequestsPage: React.FC = () => {
         </div>
 
         <div className="flex gap-4 mb-6 border-b border-[#363634]">
-          {['PENDING', 'HISTORY', 'BLOCKED'].map(tab => (
+          {[
+            { id: 'PENDING', label: 'Pending' },
+            { id: 'HISTORY', label: 'History' },
+            { id: 'BLOCKED', label: 'Blocked Users' },
+          ].map(tab => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab as any)}
-              className={`pb-3 px-2 text-sm font-bold transition-colors uppercase tracking-wider ${activeTab === tab ? 'text-[#7F77DD] border-b-2 border-[#7F77DD]' : 'text-gray-500 hover:text-gray-300'}`}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`pb-3 px-2 text-sm font-semibold transition-colors ${
+                activeTab === tab.id
+                  ? 'text-white border-b-2'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
+              style={{ borderColor: activeTab === tab.id ? '#7F77DD' : 'transparent' }}
             >
-              {tab === 'BLOCKED' ? 'Blocked Users' : tab}
+              {tab.label}
             </button>
           ))}
         </div>
