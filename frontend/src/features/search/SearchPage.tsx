@@ -4,6 +4,18 @@ import { searchUsers, sendFriendRequest, type Profile, getProfile } from '../../
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Loading from '../../components/Loading';
+import {
+  ChatIcon,
+  UserPlusIcon,
+  UserIcon,
+  LocationPinIcon,
+  SparklesIcon,
+  TargetIcon,
+  FireIcon,
+  CheckIcon,
+  BlockedIcon,
+  SearchIcon,
+} from '../../components/icons';
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -195,12 +207,13 @@ const SearchPage: React.FC = () => {
         <div className="mb-8 space-y-4">
           <div className="relative w-full flex gap-3">
             <div className="relative flex-1">
+              <SearchIcon className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search"
-                className="w-full px-4 py-3 bg-[#1A1A18] border border-[#363634] rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#7F77DD] transition-all shadow-xl"
+                className="w-full pl-11 pr-4 py-3 bg-[#1A1A18] border border-[#363634] rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#7F77DD] transition-all shadow-xl"
               />
             </div>
 
@@ -250,7 +263,12 @@ const SearchPage: React.FC = () => {
                           <h3 className="font-bold text-white text-base truncate">{profile.name || profile.username}</h3>
                           <p className="text-sm text-gray-400 truncate">@{profile.username}</p>
                           <div className="flex items-center gap-2 mt-1 hidden sm:flex">
-                            {profile.addressDisplay && <span className="text-[11px] text-gray-500">📍 {profile.addressDisplay}</span>}
+                            {profile.addressDisplay && (
+                              <span className="text-[11px] text-gray-500 inline-flex items-center gap-1">
+                                <LocationPinIcon className="w-3 h-3 text-gray-500 shrink-0" />
+                                {profile.addressDisplay}
+                              </span>
+                            )}
                             {profile.tags?.slice(0, 2).map(tag => (
                               <span key={tag} className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-400">#{tag}</span>
                             ))}
@@ -258,8 +276,12 @@ const SearchPage: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        <button onClick={() => navigate(`/chats?user=${profile.username}`)} className="p-2.5 rounded-lg bg-[#534AB7]/20 text-[#7F77DD] hover:bg-[#534AB7]/30 transition-colors" title="Message">💬</button>
-                        <button onClick={() => handleAddFriend(profile.username)} className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors" title="Add Friend">➕</button>
+                        <button onClick={() => navigate(`/chats?user=${profile.username}`)} className="p-2.5 rounded-lg bg-[#534AB7]/20 text-[#7F77DD] hover:bg-[#534AB7]/30 transition-colors" title="Message">
+                          <ChatIcon className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleAddFriend(profile.username)} className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors" title="Add Friend">
+                          <UserPlusIcon className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -296,15 +318,15 @@ const SearchPage: React.FC = () => {
                             )}
                             {group.consistencyScore === null ? (
                               <span className="inline-flex items-center justify-center gap-1.5 h-5 px-2.5 rounded-full text-[10px] font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/20">
-                                <span className="text-xs">✨</span> New
+                                <SparklesIcon className="w-3 h-3" /> New
                               </span>
                             ) : (
                               <span className="inline-flex items-center justify-center gap-1.5 h-5 px-2.5 rounded-full text-[10px] font-semibold bg-purple-500/20 text-purple-400 border border-purple-500/20">
-                                <span className="text-xs">🎯</span> {Math.round(group.consistencyScore || 0)}%
+                                <TargetIcon className="w-3 h-3" /> {Math.round(group.consistencyScore || 0)}%
                               </span>
                             )}
                             <div className="inline-flex items-center justify-center gap-1.5 h-5 px-2.5 rounded-full border text-[10px] font-semibold bg-amber-400/15 text-amber-300 border-amber-400/20">
-                              <span className="text-xs">👤</span> {group.memberCount || 1} Members
+                              <UserIcon className="w-3 h-3" /> {group.memberCount || 1} Members
                             </div>
                           </div>
                           <p className="text-[#B4B2A9] text-sm line-clamp-1 mb-2">{group.description || "No description provided."}</p>
@@ -312,8 +334,14 @@ const SearchPage: React.FC = () => {
                           <div className="flex flex-col gap-2 mt-1">
                             {/* Dual Streaks */}
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
-                              <span>Max Group Streak : <span className="font-bold text-white">{group.highestHabitGroupStreak || 0}</span> 🔥</span>
-                              <span>Current Group Streak : <span className="font-bold text-white">{group.currentGlobalHabitGroupStreak || 0}</span> 🔥</span>
+                              <span className="inline-flex items-center gap-1">
+                                Max Group Streak : <span className="font-bold text-white">{group.highestHabitGroupStreak || 0}</span>
+                                <FireIcon className="w-3.5 h-3.5 text-amber-500" />
+                              </span>
+                              <span className="inline-flex items-center gap-1">
+                                Current Group Streak : <span className="font-bold text-white">{group.currentGlobalHabitGroupStreak || 0}</span>
+                                <FireIcon className="w-3.5 h-3.5 text-amber-500" />
+                              </span>
                               {group.createdAt && (
                                 <span>Created: <span className="font-bold text-white">{new Date(group.createdAt).toLocaleDateString()}</span></span>
                               )}
@@ -339,13 +367,19 @@ const SearchPage: React.FC = () => {
                           className={`px-5 py-2.5 rounded-xl font-bold transition-all text-sm flex items-center gap-1 ${joinStatus[group.id] ? 'bg-emerald-500/20 text-emerald-400 cursor-not-allowed border border-emerald-500/20' : 'bg-[#534AB7]/20 text-[#7F77DD] hover:bg-[#534AB7]/30'}`}
                         >
                           {joinStatus[group.id] === 'Already a member' ? (
-                            <span onClick={(e) => { e.stopPropagation(); navigate(`/chats?group=${group.id}`); }} className="cursor-pointer">💬 Chat</span>
+                            <span onClick={(e) => { e.stopPropagation(); navigate(`/chats?group=${group.id}`); }} className="cursor-pointer inline-flex items-center gap-1.5">
+                              <ChatIcon className="w-4 h-4" /> Chat
+                            </span>
                           ) : joinStatus[group.id] === 'Blocked' ? (
-                            <>🚫 Blocked</>
+                            <span className="inline-flex items-center gap-1 text-red-400">
+                              <BlockedIcon className="w-4 h-4" /> Blocked
+                            </span>
                           ) : joinStatus[group.id] === 'Requested' ? (
                             <>{joinStatus[group.id]}</>
                           ) : joinStatus[group.id] ? (
-                            <>✔️ {joinStatus[group.id]}</>
+                            <span className="inline-flex items-center gap-1 text-emerald-400">
+                              <CheckIcon className="w-4 h-4" /> {joinStatus[group.id]}
+                            </span>
                           ) : (
                             <span>{group.visibility === 'PUBLIC' ? 'Join' : 'Request'}</span>
                           )}

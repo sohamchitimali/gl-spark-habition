@@ -8,6 +8,7 @@ import { useSearchParams } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Loading from '../../components/Loading';
 import { useConfirm } from '../../context/ConfirmContext';
+import { UsersGroupIcon, UserIcon } from '../../components/icons';
 
 interface Conversation {
   id: string; // 'user_123' or 'group_456'
@@ -485,10 +486,10 @@ const ChatsPage = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="text-white font-bold truncate flex items-center gap-1">
+                        <p className="text-white font-bold truncate flex items-center gap-1.5">
                           {convo.name}
-                          {convo.type === 'GROUP' && <span title="Group">👥</span>}
-                          {convo.type === 'FRIEND' && <span title="Friend">👤</span>}
+                          {convo.type === 'GROUP' && <span title="Group"><UsersGroupIcon className="w-3.5 h-3.5 text-gray-400" /></span>}
+                          {convo.type === 'FRIEND' && <span title="Friend"><UserIcon className="w-3.5 h-3.5 text-gray-400" /></span>}
                         </p>
                         {convo.lastMessageAt > 0 && (
                           <span className="text-xs text-gray-500 shrink-0">
@@ -532,10 +533,10 @@ const ChatsPage = () => {
                   {activeConvo.avatarText}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-white font-bold flex items-center gap-1">
+                  <h3 className="text-white font-bold flex items-center gap-1.5">
                     {activeConvo.name}
-                    {activeConvo.type === 'GROUP' && <span title="Group">👥</span>}
-                    {activeConvo.type === 'FRIEND' && <span title="Friend">👤</span>}
+                    {activeConvo.type === 'GROUP' && <span title="Group"><UsersGroupIcon className="w-4 h-4 text-gray-400" /></span>}
+                    {activeConvo.type === 'FRIEND' && <span title="Friend"><UserIcon className="w-4 h-4 text-gray-400" /></span>}
                   </h3>
                   <p className="text-xs text-gray-400">
                     {activeConvo.type === 'GROUP' ? 'Group Chat' : `@${activeConvo.otherUsername || 'user'}`}

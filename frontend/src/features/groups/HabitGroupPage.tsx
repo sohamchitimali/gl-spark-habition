@@ -483,7 +483,7 @@ const GroupDashboardPage = () => {
         editGroupLocLat !== group.latitude ||
         editGroupLocLng !== group.longitude ||
         editGroupLocName !== (group.addressDisplay || '') ||
-        JSON.stringify(editGroupTags) !== JSON.stringify(group.tags?.map(t => t.name) || []) ||
+        JSON.stringify(editGroupTags) !== JSON.stringify(group.tags || []) ||
         editGroupNotificationsEnabled !== (group.notificationsEnabled ?? false);
 
       if (hasChanges) {

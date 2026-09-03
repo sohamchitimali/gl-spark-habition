@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getFriendships, acceptFriendRequest, removeFriend, type FriendshipDto } from '../api/authApi';
 import { useNavigate } from 'react-router-dom';
+import { CloseIcon, SearchIcon, CheckIcon, ChatIcon, UserMinusIcon } from './icons';
 
 interface FriendsModalProps {
   onClose: () => void;
@@ -67,9 +68,7 @@ const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, onUpdate }) => {
         <div className="p-6 flex items-center justify-between" style={{ borderBottom: '1px solid #363634' }}>
           <h2 className="text-2xl font-bold text-white">Friends</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/5">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <CloseIcon className="w-6 h-6" />
           </button>
         </div>
 
@@ -86,9 +85,7 @@ const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, onUpdate }) => {
               onFocus={(e) => { e.target.style.borderColor = '#7F77DD'; }}
               onBlur={(e) => { e.target.style.borderColor = '#424240'; }}
             />
-            <svg className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            <SearchIcon className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
         </div>
 
@@ -110,11 +107,11 @@ const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, onUpdate }) => {
                           <p className="text-xs text-gray-400">@{f.friendProfile.username}</p>
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => handleAccept(f.id)} className="p-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                          <button onClick={() => handleAccept(f.id)} className="p-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30" title="Accept">
+                            <CheckIcon className="w-4 h-4" />
                           </button>
-                          <button onClick={() => handleRemove(f.id)} className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                          <button onClick={() => handleRemove(f.id)} className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30" title="Decline">
+                            <CloseIcon className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
@@ -172,14 +169,14 @@ const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, onUpdate }) => {
                             className="p-2 rounded-lg bg-[#534AB7]/20 text-[#7F77DD] hover:bg-[#534AB7]/30"
                             title="Message"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                            <ChatIcon className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={() => handleRemove(f.id)} 
                             className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20"
                             title="Remove Friend"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            <UserMinusIcon className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
