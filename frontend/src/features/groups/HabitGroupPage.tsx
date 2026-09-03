@@ -1293,10 +1293,12 @@ const GroupDashboardPage = () => {
                 <button
                   key={tab}
                   onClick={() => setActiveModalTab(tab as any)}
-                  className={`flex-1 py-3 text-sm font-bold transition-all border-b-2 ${activeModalTab === tab
-                    ? 'border-[#534AB7] text-[#534AB7]'
-                    : 'border-transparent text-[#5F5E5A] hover:text-[#B4B2A9]'
-                    }`}
+                  className={`flex-1 py-3 text-sm font-semibold transition-colors ${
+                    activeModalTab === tab
+                      ? 'text-white border-b-2'
+                      : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                  style={{ borderColor: activeModalTab === tab ? '#7F77DD' : 'transparent' }}
                 >
                   {tab.charAt(0) + tab.slice(1).toLowerCase()}
                 </button>
