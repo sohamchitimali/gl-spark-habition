@@ -407,7 +407,8 @@ const GroupDashboardPage = () => {
           setExtending(false);
           return;
         }
-        requestPayload.newDate = new Date(dlSetDate).toISOString();
+        const dateOnly = dlSetDate.split('T')[0];
+        requestPayload.newDate = `${dateOnly}T12:00:00`;
       } else {
         if (dlYears === 0 && dlMonths === 0 && dlWeeks === 0 && dlDays === 0) {
           showToast('⚠️ Please enter at least one duration value');
@@ -1069,7 +1070,7 @@ const GroupDashboardPage = () => {
               <div className="mb-6">
                 <label className="block text-sm font-medium mb-2" style={{ color: '#B4B2A9' }}>Select Date</label>
                 <input
-                  type="datetime-local"
+                  type="date"
                   value={dlSetDate}
                   onChange={e => setDlSetDate(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl text-white outline-none"
@@ -1368,14 +1369,10 @@ const GroupDashboardPage = () => {
 
                     <div className="bg-[#1A1A18] rounded-2xl p-4 border border-[#363634] shadow-inner flex flex-col justify-center aspect-square">
                       <p className="text-xs font-semibold text-[#B4B2A9] mb-4 self-start">Group Consistency Rings</p>
-                      {overallHeatmapData.size > 0 ? (
-                        <ConsistencyRings
-                          {...computeRingsFromHeatmap(overallHeatmapData)}
-                          size={180}
-                        />
-                      ) : (
-                        <p className="text-sm text-gray-500">{habits.length === 0 ? 'No Habits' : 'Not enough data'}</p>
-                      )}
+                      <ConsistencyRings
+                        {...computeRingsFromHeatmap(overallHeatmapData)}
+                        size={180}
+                      />
                     </div>
                   </div>
 

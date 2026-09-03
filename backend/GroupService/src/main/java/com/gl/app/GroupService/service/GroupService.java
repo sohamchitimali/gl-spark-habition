@@ -404,6 +404,7 @@ public class GroupService {
         newDeadline = newDeadline.withHour(12).withMinute(0).withSecond(0).withNano(0);
 
         group.setCompetitionEndDate(newDeadline);
+        group.setCompetitionActive(true);
         return toResponse(groupRepository.save(group));
     }
 

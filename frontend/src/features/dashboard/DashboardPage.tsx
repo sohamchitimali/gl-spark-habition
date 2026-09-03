@@ -15,6 +15,7 @@ import ConsistencyRings, { computeRingsFromHeatmap } from '../../components/Cons
 import { useConfirm } from '../../context/ConfirmContext';
 import confetti from 'canvas-confetti';
 import Loading from '../../components/Loading';
+import { TargetIcon } from '../../components/icons';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -344,7 +345,7 @@ const DashboardPage = () => {
                   <div className="w-16 h-16 rounded-full flex items-center justify-center border-4 border-[#534AB7] bg-[#534AB7]/20 text-[#AFA9EC] shadow-[0_0_15px_rgba(83,74,183,0.3)]">
                     <span className="text-xl font-bold">{Math.round(userInsight.personalConsistencyScore || 0)}</span>
                   </div>
-                  <p className="text-xs text-center mt-2 text-white"><span className="text-[#AFA9EC]">🎯 Next Milestone:</span><br />{userInsight.predictedNextMilestone || 'Keep tracking habits!'}</p>
+                  <p className="text-xs text-center mt-2 text-white"><span className="text-[#AFA9EC] inline-flex items-center gap-1 justify-center"><TargetIcon className="w-3.5 h-3.5" /> Next Milestone:</span><br />{userInsight.predictedNextMilestone || 'Keep tracking habits!'}</p>
                 </div>
 
                 {/* Achievements & Improvements */}
