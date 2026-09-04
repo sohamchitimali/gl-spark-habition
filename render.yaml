@@ -19,6 +19,14 @@ services:
         value: prod
       - key: FRONTEND_URLS
         sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_PORT
+        value: 5432
+      - key: DB_SSLMODE
+        value: require
       - key: DB_USERNAME
         sync: false
       - key: DB_PASSWORD
