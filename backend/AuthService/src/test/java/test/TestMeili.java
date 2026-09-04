@@ -8,7 +8,9 @@ import com.meilisearch.sdk.model.Searchable;
 
 public class TestMeili {
     public static void main(String[] args) throws Exception {
-        Client client = new Client(new Config("http://localhost:7700", "SBRmZ0tKs_Y1i3gQgH1aIZ6YI0LRojaqjSCI2yjUD-8"));
+        String host = System.getenv().getOrDefault("MEILISEARCH_HOST", "http://localhost:7700");
+        String apiKey = System.getenv().getOrDefault("MEILISEARCH_MASTER_KEY", "");
+        Client client = new Client(new Config(host, apiKey));
         Index index = client.index("users");
         SearchRequest req = SearchRequest.builder().q("").build();
         Searchable searchable = index.search(req);
