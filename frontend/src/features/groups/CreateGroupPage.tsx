@@ -85,6 +85,12 @@ const CreateGroupPage = () => {
     if (description.length > 1000) { setError('Description cannot exceed 1000 characters.'); return; }
     setLoading(true);
     setError('');
+    const finalTags = [...tags];
+    const trimmedTag = tagsInput.trim().toLowerCase();
+    if (trimmedTag && !finalTags.includes(trimmedTag) && finalTags.length < 10 && trimmedTag.length <= 50) {
+      finalTags.push(trimmedTag);
+    }
+
     try {
       await createGroup(
         name.trim(), description.trim(), visibility, 
@@ -92,7 +98,7 @@ const CreateGroupPage = () => {
         isIndefinite ? 0 : months, 
         isIndefinite ? 0 : weeks, 
         isIndefinite ? 0 : days, 
-        selectedFriends, latitude, longitude, addressDisplay, tags,
+        selectedFriends, latitude, longitude, addressDisplay, finalTags,
         notificationsEnabled
       );
       

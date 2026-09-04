@@ -130,9 +130,9 @@ export default function TimeWindowSlider({ startTime, endTime, onChange, minWind
     const intervalMinutes = Math.floor(totalMinutes / freq);
     const h = Math.floor(intervalMinutes / 60);
     const m = intervalMinutes % 60;
-    if (h > 0 && m > 0) return `~ every ${h} hour${h > 1 ? 's' : ''} and ${m} min`;
-    if (h > 0) return `~ every ${h} hour${h > 1 ? 's' : ''}`;
-    return `~ every ${m} min`;
+    if (h > 0 && m > 0) return ` ${h} hour${h > 1 ? 's' : ''} and ${m} min`;
+    if (h > 0) return ` ${h} hour${h > 1 ? 's' : ''}`;
+    return ` ${m} min`;
   };
 
   return (
@@ -200,13 +200,15 @@ export default function TimeWindowSlider({ startTime, endTime, onChange, minWind
 
       {/* Dynamic Summary Text */}
       <p className="text-sm text-center text-[#B4B2A9] font-medium bg-[#363634]/50 px-4 py-3 rounded-xl border border-[#424240] mt-2">
-        Your notifications will be sent in the window starting from{' '}
-        <span className="text-white font-bold">{formatDisplayTime(startHour)}</span> to{' '}
-        <span className="text-white font-bold">{formatDisplayTime(endHour)}</span>
+        Your notifications will be sent{' '} every
         {frequency ? (
-          <> (<span className="text-[#AFA9EC] font-semibold">{calculateIntervalText(startHour, endHour, frequency)}</span>)</>
+          <>
+            <span className="text-white font-bold">{calculateIntervalText(startHour, endHour, frequency)}</span>{' '}
+          </>
         ) : null}
-        .
+        in the window starting from{' '}
+        <span className="text-white font-bold">{formatDisplayTime(startHour)}</span> to{' '}
+        <span className="text-white font-bold">{formatDisplayTime(endHour)}</span>.
       </p>
     </div>
   );

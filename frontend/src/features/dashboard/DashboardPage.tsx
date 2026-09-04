@@ -74,7 +74,8 @@ const DashboardPage = () => {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = (msg: string) => {
-    setToast(msg);
+    const cleanMsg = msg.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+    setToast(cleanMsg);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3500);
   };
@@ -190,7 +191,7 @@ const DashboardPage = () => {
       }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      if (msg) showToast(`⚠️ ${msg}`);
+      if (msg) showToast(msg);
     }
   };
 
@@ -202,10 +203,10 @@ const DashboardPage = () => {
     try {
       await deleteHabit(habitId);
       setHabits(prev => prev.filter(h => h.id !== habitId));
-      showToast('🗑️ Habit deleted');
+      showToast('Habit deleted');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      if (msg) showToast(`⚠️ ${msg}`);
+      if (msg) showToast(msg);
     }
   };
 

@@ -9,27 +9,6 @@ import TimeWindowSlider from '../../components/TimeWindowSlider';
 import { HexColorPicker } from 'react-colorful';
 import LocationSelector from '../../components/LocationSelector';
 
-const calculateInterval = (start: string, end: string, frequency: number) => {
-  const [startH, startM] = start.split(':').map(Number);
-  const [endH, endM] = end.split(':').map(Number);
-  
-  const startMinutes = startH * 60 + startM;
-  let endMinutes = endH * 60 + endM;
-  if (endMinutes <= startMinutes) {
-    endMinutes += 24 * 60;
-  }
-  
-  const totalMinutes = endMinutes - startMinutes;
-  const intervalMinutes = Math.floor(totalMinutes / frequency);
-  
-  const h = Math.floor(intervalMinutes / 60);
-  const m = intervalMinutes % 60;
-  
-  if (h > 0 && m > 0) return `every ${h} hour${h > 1 ? 's' : ''} and ${m} min`;
-  if (h > 0) return `every ${h} hour${h > 1 ? 's' : ''}`;
-  return `every ${m} min`;
-};
-
 const ProfilePage = () => {
   const { userId } = useAuth();
   const { confirm } = useConfirm();
@@ -75,7 +54,8 @@ const ProfilePage = () => {
   const [pwdSuccess, setPwdSuccess] = useState('');
 
   const showToast = (msg: string) => {
-    setToast(msg);
+    const cleanMsg = msg.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+    setToast(cleanMsg);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3500);
   };
@@ -100,7 +80,7 @@ const ProfilePage = () => {
             });
           }
         })
-        .catch(() => showToast('⚠️ Failed to load profile'))
+        .catch(() => showToast('Failed to load profile'))
         .finally(() => setLoading(false));
 
       // Load notification settings
@@ -125,12 +105,12 @@ const ProfilePage = () => {
     setSaving(true);
     try {
       await updateProfile(form);
-      showToast('✅ Profile saved successfully!');
+      showToast('Profile saved successfully!');
     } catch (err: any) {
       if (err.response?.status === 409) {
-        showToast('⚠️ Username is already taken!');
+        showToast('Username is already taken!');
       } else {
-        showToast('⚠️ Failed to save profile');
+        showToast('Failed to save profile');
       }
     } finally {
       setSaving(false);
@@ -474,10 +454,10 @@ const ProfilePage = () => {
                         setNotifLoading(true);
                         try {
                           await axiosInstance.delete('/notifications/settings', { headers: { 'X-User-Id': String(userId) } });
-                          showToast('🔕 Notification emails disabled');
+                          showToast('Notification emails disabled');
                           setNotifEnabled(false);
                         } catch {
-                          showToast('⚠️ Failed to disable notifications');
+                          showToast('Failed to disable notifications');
                         } finally {
                           setNotifLoading(false);
                         }
@@ -504,6 +484,7 @@ const ProfilePage = () => {
                       endTime={notifSettings.windowEnd}
                       onChange={(start, end) => setNotifSettings(s => ({ ...s, windowStart: start, windowEnd: end }))}
                       minWindowHours={6}
+                      frequency={notifSettings.frequency}
                     />
                     
                     {/* Frequency */}
@@ -512,9 +493,6 @@ const ProfilePage = () => {
                         Reminders per Day: <span className="text-white font-bold">{notifSettings.frequency}</span>
                         <span className="block text-xs font-normal text-gray-500 mt-1">
                           You will receive {notifSettings.frequency} evenly distributed notifications during your active window.
-                          <span className="block mt-1 text-[#534AB7] font-semibold">
-                            (~ {calculateInterval(notifSettings.windowStart, notifSettings.windowEnd, notifSettings.frequency)})
-                          </span>
                         </span>
                       </label>
                       <input
@@ -544,19 +522,19 @@ const ProfilePage = () => {
                             
                             try {
                               await axiosInstance.put('/notifications/settings', body, { headers });
-                              showToast('✅ Notification settings saved!');
+                              showToast('Notification settings saved!');
                             } catch (putErr: any) {
                               if (putErr.response?.status === 400) {
                                 throw putErr; 
                               }
                               await axiosInstance.post('/notifications/settings', body, { headers });
-                              showToast('✅ Notification settings saved!');
+                              showToast('Notification settings saved!');
                             }
                           } catch (err: any) {
                              if (err.response?.data?.error) {
-                               showToast(`⚠️ ${err.response.data.error}`);
+                               showToast(err.response.data.error);
                              } else {
-                               showToast('⚠️ Failed to save notification settings');
+                               showToast('Failed to save notification settings');
                              }
                           } finally {
                             setNotifLoading(false);
@@ -578,9 +556,9 @@ const ProfilePage = () => {
                             showToast('Test email triggered! Check your inbox shortly.');
                           } catch (err: any) {
                             if (err.response?.data?.error) {
-                              showToast(`⚠️ ${err.response.data.error}`);
+                              showToast(err.response.data.error);
                             } else {
-                              showToast('⚠️ Failed to trigger test email.');
+                              showToast('Failed to trigger test email.');
                             }
                           } finally {
                             setTestLoading(false);

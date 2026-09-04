@@ -60,7 +60,8 @@ const SearchPage: React.FC = () => {
   const navigate = useNavigate();
 
   const showToast = (msg: string) => {
-    setToast(msg);
+    const cleanMsg = msg.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+    setToast(cleanMsg);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3500);
   };
@@ -356,12 +357,17 @@ const SearchPage: React.FC = () => {
                                 <span>Created: <span className="font-bold text-white">{new Date(group.createdAt).toLocaleDateString()}</span></span>
                               )}
                             </div>
-                            {/* Tags */}
-                            {group.tags && group.tags.length > 0 && (
+                            {/* Tags & Habits */}
+                            {((group.tags && group.tags.length > 0) || (group.habits && group.habits.length > 0)) && (
                               <div className="flex flex-wrap items-center gap-2 mt-1">
-                                {group.tags.map(tag => (
+                                {group.tags && group.tags.map(tag => (
                                   <span key={tag} className="px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase tracking-wider" style={{ background: 'rgba(83,74,183,0.3)', border: '1px solid rgba(83,74,183,0.5)' }}>
                                     #{tag}
+                                  </span>
+                                ))}
+                                {group.habits && group.habits.map(habit => (
+                                  <span key={habit.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
+                                    ✓ {habit.title}
                                   </span>
                                 ))}
                               </div>

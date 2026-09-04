@@ -7,8 +7,8 @@ echo.
 if not exist "meilisearch" mkdir meilisearch
 cd meilisearch
 
-echo Downloading Meilisearch (v1.53.1) for Windows...
-powershell -Command "Invoke-WebRequest -Uri 'https://github.com/meilisearch/meilisearch/releases/download/v1.53.1/meilisearch-windows-amd64.exe' -OutFile 'meilisearch.exe'"
+echo Downloading the latest version of Meilisearch for Windows...
+powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://github.com/meilisearch/meilisearch/releases/latest/download/meilisearch-windows-amd64.exe' -OutFile 'meilisearch.exe'"
 
 if exist "meilisearch.exe" (
     echo.

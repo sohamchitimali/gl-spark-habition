@@ -118,6 +118,11 @@ const GroupsPage = () => {
                               Open
                             </span>
                           )}
+                          {(group.visibility === 'INVITE_ONLY' || !group.visibility) && (
+                            <span className="inline-flex items-center justify-center h-5 px-2.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/20">
+                              Invite Only
+                            </span>
+                          )}
                           {group.hasPendingRequests && group.adminIds?.includes(userId || 0) && (
                             <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" title="Pending Join Requests" />
                           )}
@@ -157,23 +162,23 @@ const GroupsPage = () => {
                   </div>
                   
                   {/* Additional Info Section */}
-                  {(group.description || (group.tags && group.tags.length > 0)) && (
+                  {(group.description || (group.tags && group.tags.length > 0) || (group.habits && group.habits.length > 0)) && (
                     <div className="mt-4 pt-4 border-t border-[#363634]">
                       {group.description && (
-                        <p className="text-sm text-gray-400 line-clamp-2">{group.description}</p>
+                        <p className="text-sm text-gray-400 line-clamp-2 mb-2">{group.description}</p>
                       )}
-                      {group.tags && group.tags.length > 0 && (
-                        <div className={`flex flex-wrap gap-2 ${group.description ? 'mt-3' : ''}`}>
-                          {group.tags.slice(0, 5).map(tag => (
+                      {((group.tags && group.tags.length > 0) || (group.habits && group.habits.length > 0)) && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          {group.tags && group.tags.map(tag => (
                             <span key={tag} className="px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase tracking-wider" style={{ background: 'rgba(83,74,183,0.3)', border: '1px solid rgba(83,74,183,0.5)' }}>
-                              {tag}
+                              #{tag}
                             </span>
                           ))}
-                          {group.tags.length > 5 && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold text-gray-400 uppercase tracking-wider" style={{ background: '#363634' }}>
-                              +{group.tags.length - 5}
+                          {group.habits && group.habits.map(habit => (
+                            <span key={habit.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
+                              ✓ {habit.title}
                             </span>
-                          )}
+                          ))}
                         </div>
                       )}
                     </div>

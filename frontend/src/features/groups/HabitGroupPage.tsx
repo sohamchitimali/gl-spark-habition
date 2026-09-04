@@ -113,7 +113,8 @@ const GroupDashboardPage = () => {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = (msg: string) => {
-    setToast(msg);
+    const cleanMsg = msg.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+    setToast(cleanMsg);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3500);
   };
@@ -255,7 +256,7 @@ const GroupDashboardPage = () => {
         setHabits(prev => prev.map(h => h.id === habitId ? { ...h, trackingHabitId: res.data.id, tasks: [], tasksLoaded: true } : h));
         loadHeatmaps();
       } catch {
-        showToast('⚠️ Failed to initialize tracking');
+        showToast('Failed to initialize tracking');
       }
     } else if (!habit.tasksLoaded && habit.trackingHabitId) {
       getTasks(habit.trackingHabitId).then(r => {
@@ -305,7 +306,7 @@ const GroupDashboardPage = () => {
       loadHeatmaps();
       showToast('Habit created!');
     } catch {
-      showToast('⚠️ Failed to create habit');
+      showToast('Failed to create habit');
     } finally {
       setCreating(false);
     }
@@ -322,7 +323,7 @@ const GroupDashboardPage = () => {
       loadHeatmaps();
       showToast('Habit deleted');
     } catch {
-      showToast('⚠️ Failed to delete habit');
+      showToast('Failed to delete habit');
     }
   };
 
@@ -389,7 +390,7 @@ const GroupDashboardPage = () => {
 
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      if (msg) showToast(`⚠️ ${msg}`);
+      if (msg) showToast(msg);
     }
   };
 
@@ -402,7 +403,7 @@ const GroupDashboardPage = () => {
       let requestPayload: any = { mode: dlMode };
       if (dlMode === 'SET') {
         if (!dlSetDate) {
-          showToast('⚠️ Please select a date');
+          showToast('Please select a date');
           setExtending(false);
           return;
         }
@@ -410,7 +411,7 @@ const GroupDashboardPage = () => {
         requestPayload.newDate = `${dateOnly}T12:00:00`;
       } else {
         if (dlYears === 0 && dlMonths === 0 && dlWeeks === 0 && dlDays === 0) {
-          showToast('⚠️ Please enter at least one duration value');
+          showToast('Please enter at least one duration value');
           setExtending(false);
           return;
         }
@@ -422,7 +423,7 @@ const GroupDashboardPage = () => {
       setShowExtendModal(false);
       showToast('Deadline updated successfully!');
     } catch {
-      showToast('⚠️ Failed to update deadline');
+      showToast('Failed to update deadline');
     } finally {
       setExtending(false);
     }
@@ -438,7 +439,7 @@ const GroupDashboardPage = () => {
       setShowGroupDetailsModal(false);
       showToast('Group coins have been reset!');
     } catch {
-      showToast('⚠️ Failed to reset coins');
+      showToast('Failed to reset coins');
     } finally {
       setResetting(false);
     }
@@ -452,7 +453,7 @@ const GroupDashboardPage = () => {
       navigate('/groups');
     } catch (err: unknown) {
       const msg = (err as any)?.response?.data?.message || 'Failed to leave group';
-      showToast(`⚠️ ${msg}`);
+      showToast(msg);
     }
   };
 
@@ -464,7 +465,7 @@ const GroupDashboardPage = () => {
       navigate('/groups');
     } catch (err: unknown) {
       const msg = (err as any)?.response?.data?.message || 'Failed to delete group';
-      showToast(`⚠️ ${msg}`);
+      showToast(msg);
     }
   };
 
@@ -1441,7 +1442,7 @@ const GroupDashboardPage = () => {
                                   setGroup(res.data);
                                   showToast(`${member.name || 'User'} is now an admin`);
                                 } catch {
-                                  showToast('⚠️ Failed to promote user');
+                                  showToast('Failed to promote user');
                                 }
                               }}
                               className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-[#363634] text-white hover:bg-[#534AB7] transition-colors"
@@ -1457,7 +1458,7 @@ const GroupDashboardPage = () => {
                                   setGroup(res.data);
                                   showToast(`${member.name || 'User'} is no longer an admin`);
                                 } catch {
-                                  showToast('⚠️ Failed to remove admin');
+                                  showToast('Failed to remove admin');
                                 }
                               }}
                               className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-[#363634] text-white hover:bg-orange-500 transition-colors"
@@ -1476,7 +1477,7 @@ const GroupDashboardPage = () => {
                                       setMembers(prev => prev.filter(m => m.id !== member.id));
                                       showToast("Member kicked.");
                                     } catch {
-                                      showToast("⚠️ Failed to kick member");
+                                      showToast("Failed to kick member");
                                     }
                                   }
                                 }}
@@ -1493,7 +1494,7 @@ const GroupDashboardPage = () => {
                                       setMembers(prev => prev.filter(m => m.id !== member.id));
                                       showToast("Member kicked and blocked.");
                                     } catch {
-                                      showToast("⚠️ Failed to kick and block member");
+                                      showToast("Failed to kick and block member");
                                     }
                                   }
                                 }}
@@ -1616,14 +1617,19 @@ const GroupDashboardPage = () => {
                   <button
                     onClick={async () => {
                       if (!editGroupName.trim()) {
-                        showToast('⚠️ Name is required');
+                        showToast('Name is required');
                         return;
                       }
                       if (editGroupDesc.length > 1000) {
-                        showToast('⚠️ Description cannot exceed 1000 characters');
+                        showToast('Description cannot exceed 1000 characters');
                         return;
                       }
                       setSavingSettings(true);
+                      const finalEditTags = [...editGroupTags];
+                      const trimmedEditTag = editGroupTagsInput.trim().toLowerCase();
+                      if (trimmedEditTag && !finalEditTags.includes(trimmedEditTag) && finalEditTags.length < 10 && trimmedEditTag.length <= 50) {
+                        finalEditTags.push(trimmedEditTag);
+                      }
                       try {
                         const res = await updateGroupSettings(Number(groupId), {
                           name: editGroupName.trim(),
@@ -1631,14 +1637,14 @@ const GroupDashboardPage = () => {
                           latitude: editGroupLocLat,
                           longitude: editGroupLocLng,
                           addressDisplay: editGroupLocName,
-                          tags: editGroupTags,
+                          tags: finalEditTags,
                           notificationsEnabled: editGroupNotificationsEnabled
                         });
                         setGroup(res.data);
                         showToast('Settings saved successfully');
                         setShowGroupDetailsModal(false);
                       } catch {
-                        showToast('⚠️ Failed to save settings');
+                        showToast('Failed to save settings');
                       } finally {
                         setSavingSettings(false);
                       }
