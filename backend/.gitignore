@@ -1,0 +1,25 @@
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### Docker ###
+docker-compose.yml
+init-multiple-databases.sh
+
+###backend###
+.env
+.env.*
+!.env*.example
+*.env
+reset-db.bat
+reset-db.sh
+seed-db.bat
+
+### Java/Maven ###
+*/target/
+target/
+*.jar
+*.class
+*.log
