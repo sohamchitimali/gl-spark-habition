@@ -14,3 +14,4 @@ pub fn router() -> Router<crate::state::AppState> {
         .route("/health", get(health_check))
         .route("/actuator/health", get(health_check))
 }
+

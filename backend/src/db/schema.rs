@@ -271,3 +271,4 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("Database initialization complete.");
     Ok(())
 }
+

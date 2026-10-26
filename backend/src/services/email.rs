@@ -45,3 +45,4 @@ pub async fn send_email(
         Ok(())
     }
 }
+

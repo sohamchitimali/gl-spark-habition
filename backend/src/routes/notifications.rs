@@ -277,3 +277,4 @@ pub fn router() -> Router<AppState> {
         .route("/settings/test", post(trigger_test_notification))
         .route("/unsubscribe", get(unsubscribe_page).post(process_unsubscribe))
 }
+

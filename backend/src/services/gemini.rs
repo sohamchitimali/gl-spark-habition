@@ -129,3 +129,4 @@ fn wrap_html(body: &str, unsubscribe_url: &str) -> String {
         body, unsubscribe_url
     )
 }
+

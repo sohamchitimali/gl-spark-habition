@@ -25,3 +25,4 @@ pub struct LeaderboardResponse {
     pub entries: Vec<LeaderboardEntry>,
     pub winner_id: Option<i64>,
 }
+

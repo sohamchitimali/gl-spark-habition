@@ -99,3 +99,4 @@ pub fn router() -> Router<AppState> {
         .route("/groups/:id", get(get_group_insights))
         .route("/users/me", get(get_user_insights))
 }
+

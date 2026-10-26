@@ -149,3 +149,4 @@ pub fn router() -> Router<AppState> {
         .route("/coins/groups/:group_id/reset", delete(reset_group_coins))
         .route("/competitions/:group_id/finalize", post(finalize_competition))
 }
+

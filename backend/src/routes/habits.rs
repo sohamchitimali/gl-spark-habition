@@ -806,3 +806,4 @@ pub fn router() -> Router<AppState> {
         .route("/users/:user_id/streak", get(get_user_streak))
         .route("/groups/:group_id/users/:user_id/streak", get(get_group_streak))
 }
+

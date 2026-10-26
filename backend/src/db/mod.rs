@@ -18,3 +18,4 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
     info!("Database connection pool established successfully.");
     Ok(pool)
 }
+

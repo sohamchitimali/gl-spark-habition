@@ -6,3 +6,4 @@ pub mod health;
 pub mod insights;
 pub mod messages;
 pub mod notifications;
+

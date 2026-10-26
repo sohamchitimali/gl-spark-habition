@@ -29,3 +29,4 @@ pub struct NotificationSummary {
     pub unread_messages_count: i32,
     pub pending_join_requests_count: i32,
 }
+

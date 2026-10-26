@@ -240,3 +240,4 @@ async fn run_notification_cycle(
 
     Ok(())
 }
+

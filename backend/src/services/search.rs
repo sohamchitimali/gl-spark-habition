@@ -371,3 +371,4 @@ pub async fn sync_group_meilisearch(config: &AppConfig, client: &reqwest::Client
     }
     let _ = req.send().await;
 }
+

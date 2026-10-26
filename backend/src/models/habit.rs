@@ -61,3 +61,4 @@ pub struct CompleteHabitResponse {
 pub struct CreateTaskRequest {
     pub title: String,
 }
+

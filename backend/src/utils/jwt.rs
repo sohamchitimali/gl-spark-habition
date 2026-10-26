@@ -57,3 +57,4 @@ pub fn verify_access_token(token: &str, secret: &str) -> Result<i64, AppError> {
 pub fn generate_refresh_token() -> String {
     Uuid::new_v4().to_string()
 }
+
