@@ -10,14 +10,16 @@ services:
     plan: free
     region: oregon
     autoDeploy: true
-    branch: deploy
-    healthCheckPath: /actuator/health
+    branch: rust-backend
+    healthCheckPath: /health
     envVars:
       - key: PORT
         value: 8080
-      - key: SPRING_PROFILES_ACTIVE
-        value: prod
+      - key: DATABASE_URL
+        sync: false
       - key: FRONTEND_URLS
+        sync: false
+      - key: JWT_SECRET
         sync: false
       - key: DB_HOST
         sync: false
@@ -30,28 +32,6 @@ services:
       - key: DB_USERNAME
         sync: false
       - key: DB_PASSWORD
-        sync: false
-      - key: DB_URL_USERS
-        sync: false
-      - key: DB_URL_GROUPS
-        sync: false
-      - key: DB_URL_HABITS
-        sync: false
-      - key: DB_URL_NOTIFICATIONS
-        sync: false
-      - key: DB_SCHEMA_USERS
-        value: habition_users
-      - key: DB_SCHEMA_GROUPS
-        value: habition_groups
-      - key: DB_SCHEMA_HABITS
-        value: habition_habits
-      - key: DB_SCHEMA_NOTIFICATIONS
-        value: habition_notifications
-      - key: JWT_SECRET
-        sync: false
-      - key: HMAC_SECRET
-        sync: false
-      - key: OTP_SECRET
         sync: false
       - key: SPRING_MAIL_HOST
         value: smtp.gmail.com

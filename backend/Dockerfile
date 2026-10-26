@@ -1,45 +1,38 @@
-# Multi-stage Dockerfile for Habition Microservices on Render Free Tier
+# ==============================================================================
+# Habition Rust Unified Backend Dockerfile
+# Ultra-lean runtime (<40MB image, <30MB RAM footprint)
+# Designed for Render Free Tier (512MB RAM), Fly.io, Railway, VPS
+# ==============================================================================
 
-# Stage 1: Build JARs
-FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
-WORKDIR /build
-
-# Copy all microservice source directories
-COPY EurekaServer ./EurekaServer
-COPY ApiGateway ./ApiGateway
-COPY AuthService ./AuthService
-COPY GroupService ./GroupService
-COPY HabitService ./HabitService
-COPY NotificationService ./NotificationService
-
-# Compile and package all 6 services
-RUN cd EurekaServer && mvn clean package -DskipTests && \
-    cd ../ApiGateway && mvn clean package -DskipTests && \
-    cd ../AuthService && mvn clean package -DskipTests && \
-    cd ../GroupService && mvn clean package -DskipTests && \
-    cd ../HabitService && mvn clean package -DskipTests && \
-    cd ../NotificationService && mvn clean package -DskipTests
-
-# Stage 2: Ultra-lean Runtime Container
-FROM eclipse-temurin:21-jre-alpine
+# Stage 1: Build Rust binary
+FROM rust:1.85-slim-bookworm AS builder
 WORKDIR /app
 
-# Install bash and curl for service health orchestration
-RUN apk add --no-cache bash curl
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 
-# Copy packaged JARs from builder stage
-COPY --from=builder /build/EurekaServer/target/EurekaServer-0.0.1-SNAPSHOT.jar /app/EurekaServer.jar
-COPY --from=builder /build/ApiGateway/target/ApiGateway-0.0.1-SNAPSHOT.jar /app/ApiGateway.jar
-COPY --from=builder /build/AuthService/target/AuthService-0.0.1-SNAPSHOT.jar /app/AuthService.jar
-COPY --from=builder /build/GroupService/target/GroupService-0.0.1-SNAPSHOT.jar /app/GroupService.jar
-COPY --from=builder /build/HabitService/target/HabitService-0.0.1-SNAPSHOT.jar /app/HabitService.jar
-COPY --from=builder /build/NotificationService/target/NotificationService-0.0.1-SNAPSHOT.jar /app/NotificationService.jar
+# Copy crate files
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
 
-# Copy entrypoint script
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+# Build stripped release binary
+RUN cargo build --release && strip target/release/habition-backend
 
-# Default port exposed to Render
+# Stage 2: Minimal runtime container
+FROM debian:bookworm-slim
+WORKDIR /app
+
+# Install runtime dependencies (ca-certificates for HTTPS/TLS, curl for health checks, tzdata for timezones)
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl tzdata && rm -rf /var/lib/apt/lists/*
+
+# Copy release binary from builder
+COPY --from=builder /app/target/release/habition-backend /usr/local/bin/habition-backend
+
+# Default port
 EXPOSE 8080
+ENV PORT=8080
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:${PORT}/health || exit 1
+
+ENTRYPOINT ["habition-backend"]

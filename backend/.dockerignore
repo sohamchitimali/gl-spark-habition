@@ -1,0 +1,9 @@
+target/
+legacy-java/
+.git
+.gitignore
+.env
+.env.*
+!*.example
+*.tmp
+*.log
