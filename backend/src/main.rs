@@ -46,10 +46,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Start background scheduler
     services::scheduler::start_scheduler(
-        pool,
+        pool.clone(),
         state.config.clone(),
         state.http_client.clone(),
     );
+
+    // Initial background Meilisearch index synchronization
+    let sync_pool = pool.clone();
+    let sync_config = state.config.clone();
+    let sync_client = state.http_client.clone();
+    tokio::spawn(async move {
+        services::search::initial_sync_to_meilisearch(&sync_pool, &sync_config, &sync_client).await;
+    });
 
     // Setup CORS
     let x_user_id = HeaderName::from_static("x-user-id");

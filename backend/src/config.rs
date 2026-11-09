@@ -59,8 +59,22 @@ impl AppConfig {
             .filter(|s| !s.is_empty())
             .collect();
 
-        let meilisearch_host = env::var("MEILISEARCH_HOST")
-            .unwrap_or_else(|_| "http://localhost:7700".to_string());
+        let meilisearch_enabled = env::var("ENABLE_MEILISEARCH")
+            .map(|v| v != "false" && v != "0" && v != "no")
+            .unwrap_or(true);
+
+        let meilisearch_host = if !meilisearch_enabled {
+            "".to_string()
+        } else {
+            let host = env::var("MEILISEARCH_HOST")
+                .unwrap_or_else(|_| "http://127.0.0.1:7700".to_string());
+            if host == "none" || host == "disabled" {
+                "".to_string()
+            } else {
+                host
+            }
+        };
+
         let meilisearch_api_key = env::var("MEILISEARCH_API_KEY")
             .or_else(|_| env::var("MEILISEARCH_MASTER_KEY"))
             .unwrap_or_else(|_| "".to_string());

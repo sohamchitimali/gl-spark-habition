@@ -43,7 +43,5 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
-      - key: MEILISEARCH_HOST
-        sync: false
-      - key: MEILISEARCH_MASTER_KEY
-        sync: false
+      - key: ENABLE_MEILISEARCH
+        value: "true"

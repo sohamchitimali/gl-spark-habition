@@ -372,3 +372,140 @@ pub async fn sync_group_meilisearch(config: &AppConfig, client: &reqwest::Client
     let _ = req.send().await;
 }
 
+pub async fn initial_sync_to_meilisearch(pool: &PgPool, config: &AppConfig, client: &reqwest::Client) {
+    if config.meilisearch_host.is_empty() {
+        tracing::info!("Meilisearch host not configured; pure PostgreSQL search engine will be used.");
+        return;
+    }
+
+    tracing::info!("Checking internal Meilisearch availability at {}...", config.meilisearch_host);
+
+    // Wait up to 10 seconds for Meilisearch to become available
+    let mut available = false;
+    let health_url = format!("{}/health", config.meilisearch_host);
+    for _ in 0..20 {
+        if let Ok(resp) = client.get(&health_url).send().await {
+            if resp.status().is_success() {
+                available = true;
+                break;
+            }
+        }
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    }
+
+    if !available {
+        tracing::warn!("Internal Meilisearch is not reachable at {}; continuing with PostgreSQL fallback.", config.meilisearch_host);
+        return;
+    }
+
+    tracing::info!("Meilisearch is healthy. Synchronizing existing users and groups from database...");
+
+    // Configure groups index filterable attributes
+    let settings_url = format!("{}/indexes/groups/settings", config.meilisearch_host);
+    let mut settings_req = client.patch(&settings_url).json(&json!({
+        "filterableAttributes": ["visibility"]
+    }));
+    if !config.meilisearch_api_key.is_empty() {
+        settings_req = settings_req.bearer_auth(&config.meilisearch_api_key);
+    }
+    let _ = settings_req.send().await;
+
+    // Fetch and index all users from PostgreSQL
+    let users_res = sqlx::query(
+        r#"
+        SELECT u.id, u.username, COALESCE(p.name, '') as name
+        FROM users u
+        LEFT JOIN user_profiles p ON u.id = p.user_id
+        WHERE u.username IS NOT NULL
+        "#
+    ).fetch_all(pool).await;
+
+    if let Ok(users) = users_res {
+        let mut user_docs = Vec::new();
+        for u in users {
+            let id: i64 = u.get("id");
+            let username: String = u.get("username");
+            let name: String = u.get("name");
+
+            let tags: Vec<String> = sqlx::query_scalar(
+                r#"
+                SELECT t.name FROM tags t
+                JOIN user_profile_tags upt ON t.id = upt.tag_id
+                JOIN user_profiles p ON upt.user_profile_id = p.id
+                WHERE p.user_id = $1
+                "#
+            )
+            .bind(id)
+            .fetch_all(pool)
+            .await
+            .unwrap_or_default();
+
+            user_docs.push(json!({
+                "id": id,
+                "username": username,
+                "name": name,
+                "tags": tags
+            }));
+        }
+
+        if !user_docs.is_empty() {
+            let user_docs_url = format!("{}/indexes/users/documents", config.meilisearch_host);
+            let mut req = client.post(&user_docs_url).json(&user_docs);
+            if !config.meilisearch_api_key.is_empty() {
+                req = req.bearer_auth(&config.meilisearch_api_key);
+            }
+            let _ = req.send().await;
+            tracing::info!("Synced {} users to Meilisearch", user_docs.len());
+        }
+    }
+
+    // Fetch and index all groups from PostgreSQL
+    let groups_res = sqlx::query(
+        r#"
+        SELECT id, name, COALESCE(description, '') as description, visibility
+        FROM habit_groups
+        "#
+    ).fetch_all(pool).await;
+
+    if let Ok(groups) = groups_res {
+        let mut group_docs = Vec::new();
+        for g in groups {
+            let id: i64 = g.get("id");
+            let name: String = g.get("name");
+            let description: String = g.get("description");
+            let visibility: String = g.get("visibility");
+
+            let tags: Vec<String> = sqlx::query_scalar(
+                r#"
+                SELECT t.name FROM tags t
+                JOIN group_tags gt ON t.id = gt.tag_id
+                WHERE gt.group_id = $1
+                "#
+            )
+            .bind(id)
+            .fetch_all(pool)
+            .await
+            .unwrap_or_default();
+
+            group_docs.push(json!({
+                "id": id,
+                "name": name,
+                "description": description,
+                "tags": tags,
+                "visibility": visibility
+            }));
+        }
+
+        if !group_docs.is_empty() {
+            let group_docs_url = format!("{}/indexes/groups/documents", config.meilisearch_host);
+            let mut req = client.post(&group_docs_url).json(&group_docs);
+            if !config.meilisearch_api_key.is_empty() {
+                req = req.bearer_auth(&config.meilisearch_api_key);
+            }
+            let _ = req.send().await;
+            tracing::info!("Synced {} groups to Meilisearch", group_docs.len());
+        }
+    }
+}
+
+

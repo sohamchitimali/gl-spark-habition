@@ -1,7 +1,7 @@
 # ==============================================================================
 # Habition Rust Unified Backend Dockerfile
-# Ultra-lean runtime (<40MB image, <30MB RAM footprint)
-# Designed for Render Free Tier (512MB RAM), Fly.io, Railway, VPS
+# Ultra-lean runtime with bundled internal Meilisearch
+# Memory footprint: ~55MB RAM (fits Render 512MB free tier comfortably)
 # ==============================================================================
 
 # Stage 1: Build Rust binary
@@ -28,6 +28,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 # Copy release binary from builder
 COPY --from=builder /app/target/release/habition-backend /usr/local/bin/habition-backend
 
+# Copy official Meilisearch binary
+COPY --from=getmeili/meilisearch:v1.10 /bin/meilisearch /usr/local/bin/meilisearch
+
+# Copy entrypoint script
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 # Default port
 EXPOSE 8080
 ENV PORT=8080
@@ -35,4 +42,4 @@ ENV PORT=8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:${PORT}/health || exit 1
 
-ENTRYPOINT ["habition-backend"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
