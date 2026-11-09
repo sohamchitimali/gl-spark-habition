@@ -5,16 +5,16 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("Running database initialization and schema setup...");
 
     // Create schemas if supported
-    let _ = sqlx::query("CREATE SCHEMA IF NOT EXISTS habition_users").execute(pool).await;
-    let _ = sqlx::query("CREATE SCHEMA IF NOT EXISTS habition_groups").execute(pool).await;
-    let _ = sqlx::query("CREATE SCHEMA IF NOT EXISTS habition_habits").execute(pool).await;
-    let _ = sqlx::query("CREATE SCHEMA IF NOT EXISTS habition_notifications").execute(pool).await;
+    let _ = sqlx::raw_sql("CREATE SCHEMA IF NOT EXISTS habition_users").execute(pool).await;
+    let _ = sqlx::raw_sql("CREATE SCHEMA IF NOT EXISTS habition_groups").execute(pool).await;
+    let _ = sqlx::raw_sql("CREATE SCHEMA IF NOT EXISTS habition_habits").execute(pool).await;
+    let _ = sqlx::raw_sql("CREATE SCHEMA IF NOT EXISTS habition_notifications").execute(pool).await;
 
     // Set search path so all schemas and public are accessible
-    let _ = sqlx::query("SET search_path TO public, habition_users, habition_groups, habition_habits, habition_notifications").execute(pool).await;
+    let _ = sqlx::raw_sql("SET search_path TO public, habition_users, habition_groups, habition_habits, habition_notifications").execute(pool).await;
 
     // Users and Profiles
-    sqlx::query(
+    sqlx::raw_sql(
         r#"
         CREATE TABLE IF NOT EXISTS users (
             id BIGSERIAL PRIMARY KEY,
