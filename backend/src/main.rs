@@ -37,9 +37,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = AppConfig::from_env();
     info!("Loaded configuration for port {}", config.port);
 
-    // Database initialization
-    let pool = db::create_pool(&config.database_url).await?;
-    db::schema::run_migrations(&pool).await?;
+    // Database initialization (non-blocking lazy connection pool)
+    let pool = db::create_pool(&config.database_url)?;
+
+    // Spawn background database initialization and migration with retries
+    let migration_pool = pool.clone();
+    tokio::spawn(async move {
+        db::initialize_database_with_retries(&migration_pool).await;
+    });
 
     // Create shared state
     let state = AppState::new(pool.clone(), config.clone());

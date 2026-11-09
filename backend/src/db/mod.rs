@@ -4,52 +4,44 @@ use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::time::Duration;
 use tracing::{info, warn};
 
-pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
+pub fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
     let masked_url = mask_db_url(database_url);
-    info!("Connecting to PostgreSQL database at {}...", masked_url);
+    info!("Initializing PostgreSQL connection pool for {}...", masked_url);
 
-    let max_retries = 6;
-    let mut last_err = None;
+    let pool = PgPoolOptions::new()
+        .max_connections(15)
+        .min_connections(0)
+        .acquire_timeout(Duration::from_secs(30))
+        .idle_timeout(Duration::from_secs(300))
+        .connect_lazy(database_url)?;
 
+    Ok(pool)
+}
+
+pub async fn initialize_database_with_retries(pool: &PgPool) {
+    let max_retries = 30; // 30 attempts x 5s = 2.5 minutes for Layerbase wake-up
     for attempt in 1..=max_retries {
-        info!("Attempting database connection ({}/{})...", attempt, max_retries);
-
-        let pool_res = PgPoolOptions::new()
-            .max_connections(10)
-            .min_connections(0)
-            .acquire_timeout(Duration::from_secs(20))
-            .idle_timeout(Duration::from_secs(300))
-            .connect(database_url)
-            .await;
-
-        match pool_res {
-            Ok(pool) => {
-                match sqlx::query("SELECT 1").execute(&pool).await {
-                    Ok(_) => {
-                        info!("Database connection established successfully!");
-                        return Ok(pool);
-                    }
-                    Err(e) => {
-                        warn!("Database ping failed on attempt {}: {}. Retrying in 4s...", attempt, e);
-                        last_err = Some(e);
-                    }
+        info!("Verifying database connectivity (attempt {}/{})...", attempt, max_retries);
+        match sqlx::query("SELECT 1").execute(pool).await {
+            Ok(_) => {
+                info!("Database connectivity confirmed!");
+                if let Err(e) = schema::run_migrations(pool).await {
+                    tracing::error!("Failed to run schema migrations: {}", e);
+                } else {
+                    info!("Database migrations completed successfully!");
                 }
+                return;
             }
             Err(e) => {
                 warn!(
-                    "Connection attempt {} failed: {}. Database might be waking up from hibernation; retrying in 4s...",
-                    attempt, e
+                    "Database connection attempt {}/{} failed: {}. Database might be waking up from hibernation; retrying in 5s...",
+                    attempt, max_retries, e
                 );
-                last_err = Some(e);
+                tokio::time::sleep(Duration::from_secs(5)).await;
             }
         }
-
-        if attempt < max_retries {
-            tokio::time::sleep(Duration::from_secs(4)).await;
-        }
     }
-
-    Err(last_err.unwrap())
+    tracing::error!("Exceeded max database connection retries ({}). Database is unreachable.", max_retries);
 }
 
 fn mask_db_url(url: &str) -> String {

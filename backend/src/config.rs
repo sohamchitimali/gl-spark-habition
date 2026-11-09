@@ -115,13 +115,14 @@ impl AppConfig {
 }
 
 fn clean_jdbc_url(url: &str) -> String {
+    let clean = url.trim().trim_matches('"').trim_matches('\'');
     // If user has jdbc:postgresql://... convert to postgres://...
-    if url.starts_with("jdbc:postgresql://") {
-        url.replacen("jdbc:postgresql://", "postgres://", 1)
-    } else if url.starts_with("jdbc:postgres://") {
-        url.replacen("jdbc:postgres://", "postgres://", 1)
+    if clean.starts_with("jdbc:postgresql://") {
+        clean.replacen("jdbc:postgresql://", "postgres://", 1)
+    } else if clean.starts_with("jdbc:postgres://") {
+        clean.replacen("jdbc:postgres://", "postgres://", 1)
     } else {
-        url.to_string()
+        clean.to_string()
     }
 }
 
