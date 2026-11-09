@@ -5,6 +5,10 @@ pub struct AppConfig {
     pub port: u16,
     pub database_url: String,
     pub jwt_secret: String,
+    #[allow(dead_code)]
+    pub hmac_secret: String,
+    #[allow(dead_code)]
+    pub otp_secret: String,
     pub frontend_urls: Vec<String>,
     pub meilisearch_host: String,
     pub meilisearch_api_key: String,
@@ -27,18 +31,14 @@ impl AppConfig {
             .unwrap_or(8080);
 
         // Compute Database URL:
-        // Priority 1: DATABASE_URL (if non-empty)
-        // Priority 2: DB_URL (from existing .env, if non-empty)
-        // Priority 3: DB_URL_USERS (if non-empty)
-        // Priority 4: Constructed from DB_HOST, DB_PORT, DB_NAME, DB_USERNAME, DB_PASSWORD, DB_SSLMODE
+        // Priority 1: DATABASE_URL (if provided and non-empty)
+        // Priority 2: DB_HOST if remote (e.g. Layerbase/cloud) -> builds from DB_HOST, DB_PORT, DB_NAME, DB_USERNAME, DB_PASSWORD, DB_SSLMODE
+        // Priority 3: DB_URL (if provided and non-empty)
+        // Priority 4: DB_URL_USERS (if provided and non-empty)
+        // Priority 5: Local DB_HOST / fallback
         let database_url = if let Some(url) = env::var("DATABASE_URL").ok().filter(|s| !s.trim().is_empty()) {
             clean_jdbc_url(&url)
-        } else if let Some(url) = env::var("DB_URL").ok().filter(|s| !s.trim().is_empty()) {
-            clean_jdbc_url(&url)
-        } else if let Some(url) = env::var("DB_URL_USERS").ok().filter(|s| !s.trim().is_empty()) {
-            clean_jdbc_url(&url)
-        } else {
-            let host = env::var("DB_HOST").unwrap_or_else(|_| "localhost".to_string());
+        } else if let Some(host) = env::var("DB_HOST").ok().filter(|s| !s.trim().is_empty() && s.trim() != "localhost") {
             let db_port = env::var("DB_PORT").unwrap_or_else(|_| "5432".to_string());
             let name = env::var("DB_NAME").unwrap_or_else(|_| "postgres".to_string());
             let user = env::var("DB_USERNAME").unwrap_or_else(|_| "postgres".to_string());
@@ -49,10 +49,32 @@ impl AppConfig {
             let encoded_pass = urlencoding_simple(&pass);
 
             format!("postgres://{}:{}@{}:{}/{}?sslmode={}", encoded_user, encoded_pass, host, db_port, name, sslmode)
+        } else if let Some(url) = env::var("DB_URL").ok().filter(|s| !s.trim().is_empty()) {
+            clean_jdbc_url(&url)
+        } else if let Some(url) = env::var("DB_URL_USERS").ok().filter(|s| !s.trim().is_empty()) {
+            clean_jdbc_url(&url)
+        } else {
+            let host = env::var("DB_HOST").unwrap_or_else(|_| "localhost".to_string());
+            let db_port = env::var("DB_PORT").unwrap_or_else(|_| "5432".to_string());
+            let name = env::var("DB_NAME").unwrap_or_else(|_| "habition_users".to_string());
+            let user = env::var("DB_USERNAME").unwrap_or_else(|_| "postgres".to_string());
+            let pass = env::var("DB_PASSWORD").unwrap_or_else(|_| "root".to_string());
+            let sslmode = env::var("DB_SSLMODE").unwrap_or_else(|_| "disable".to_string());
+
+            let encoded_user = urlencoding_simple(&user);
+            let encoded_pass = urlencoding_simple(&pass);
+
+            format!("postgres://{}:{}@{}:{}/{}?sslmode={}", encoded_user, encoded_pass, host, db_port, name, sslmode)
         };
 
         let jwt_secret = env::var("JWT_SECRET")
             .unwrap_or_else(|_| "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970".to_string());
+
+        let hmac_secret = env::var("HMAC_SECRET")
+            .unwrap_or_else(|_| "default-dev-secret-key-123456".to_string());
+
+        let otp_secret = env::var("OTP_SECRET")
+            .unwrap_or_else(|_| "3b497a6d9e81b672a9b3d0c4f826317b".to_string());
 
         let frontend_urls_raw = env::var("FRONTEND_URLS")
             .unwrap_or_else(|_| env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:5173,http://localhost:5174".to_string()));
@@ -103,6 +125,8 @@ impl AppConfig {
             port,
             database_url,
             jwt_secret,
+            hmac_secret,
+            otp_secret,
             frontend_urls,
             meilisearch_host,
             meilisearch_api_key,
