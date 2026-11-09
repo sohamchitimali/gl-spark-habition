@@ -27,25 +27,28 @@ impl AppConfig {
             .unwrap_or(8080);
 
         // Compute Database URL:
-        // Priority 1: DATABASE_URL
-        // Priority 2: DB_URL (from existing .env)
-        // Priority 3: DB_URL_USERS
+        // Priority 1: DATABASE_URL (if non-empty)
+        // Priority 2: DB_URL (from existing .env, if non-empty)
+        // Priority 3: DB_URL_USERS (if non-empty)
         // Priority 4: Constructed from DB_HOST, DB_PORT, DB_NAME, DB_USERNAME, DB_PASSWORD, DB_SSLMODE
-        let database_url = if let Ok(url) = env::var("DATABASE_URL") {
+        let database_url = if let Some(url) = env::var("DATABASE_URL").ok().filter(|s| !s.trim().is_empty()) {
             clean_jdbc_url(&url)
-        } else if let Ok(url) = env::var("DB_URL") {
+        } else if let Some(url) = env::var("DB_URL").ok().filter(|s| !s.trim().is_empty()) {
             clean_jdbc_url(&url)
-        } else if let Ok(url) = env::var("DB_URL_USERS") {
+        } else if let Some(url) = env::var("DB_URL_USERS").ok().filter(|s| !s.trim().is_empty()) {
             clean_jdbc_url(&url)
         } else {
             let host = env::var("DB_HOST").unwrap_or_else(|_| "localhost".to_string());
             let db_port = env::var("DB_PORT").unwrap_or_else(|_| "5432".to_string());
-            let name = env::var("DB_NAME").unwrap_or_else(|_| "habition_users".to_string());
+            let name = env::var("DB_NAME").unwrap_or_else(|_| "postgres".to_string());
             let user = env::var("DB_USERNAME").unwrap_or_else(|_| "postgres".to_string());
-            let pass = env::var("DB_PASSWORD").unwrap_or_else(|_| "postgres".to_string());
-            let sslmode = env::var("DB_SSLMODE").unwrap_or_else(|_| "prefer".to_string());
+            let pass = env::var("DB_PASSWORD").unwrap_or_else(|_| "".to_string());
+            let sslmode = env::var("DB_SSLMODE").unwrap_or_else(|_| "require".to_string());
 
-            format!("postgres://{}:{}@{}:{}/{}?sslmode={}", user, pass, host, db_port, name, sslmode)
+            let encoded_user = urlencoding_simple(&user);
+            let encoded_pass = urlencoding_simple(&pass);
+
+            format!("postgres://{}:{}@{}:{}/{}?sslmode={}", encoded_user, encoded_pass, host, db_port, name, sslmode)
         };
 
         let jwt_secret = env::var("JWT_SECRET")
@@ -124,5 +127,20 @@ fn clean_jdbc_url(url: &str) -> String {
     } else {
         clean.to_string()
     }
+}
+
+fn urlencoding_simple(s: &str) -> String {
+    let mut encoded = String::with_capacity(s.len());
+    for b in s.bytes() {
+        match b {
+            b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                encoded.push(b as char);
+            }
+            _ => {
+                encoded.push_str(&format!("%{:02X}", b));
+            }
+        }
+    }
+    encoded
 }
 
