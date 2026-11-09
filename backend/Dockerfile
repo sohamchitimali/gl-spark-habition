@@ -22,14 +22,14 @@ RUN cargo build --release && strip target/release/habition-backend
 FROM debian:bookworm-slim
 WORKDIR /app
 
-# Install runtime dependencies (ca-certificates for HTTPS/TLS, curl for health checks, tzdata for timezones)
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl tzdata && rm -rf /var/lib/apt/lists/*
+# Install runtime dependencies and official glibc-compatible Meilisearch binary
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl tzdata && \
+    curl -fsSL https://github.com/meilisearch/meilisearch/releases/download/v1.10.3/meilisearch-linux-amd64 -o /usr/local/bin/meilisearch && \
+    chmod +x /usr/local/bin/meilisearch && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy release binary from builder
 COPY --from=builder /app/target/release/habition-backend /usr/local/bin/habition-backend
-
-# Copy official Meilisearch binary
-COPY --from=getmeili/meilisearch:v1.10 /bin/meilisearch /usr/local/bin/meilisearch
 
 # Copy entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
