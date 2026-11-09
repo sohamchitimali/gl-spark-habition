@@ -90,6 +90,8 @@ pub fn compute_next_slot(
 pub fn start_scheduler(pool: PgPool, config: Arc<AppConfig>, client: reqwest::Client) {
     tokio::spawn(async move {
         info!("Starting background notification scheduler...");
+        // Wait 10 seconds for initial startup and database migrations to complete
+        sleep(std::time::Duration::from_secs(10)).await;
         loop {
             if let Err(e) = run_notification_cycle(&pool, &config, &client).await {
                 error!("Error in background notification cycle: {:?}", e);
