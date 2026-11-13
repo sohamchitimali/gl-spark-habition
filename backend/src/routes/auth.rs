@@ -190,6 +190,201 @@ async fn refresh(
     }))
 }
 
+async fn google_login(
+    State(state): State<AppState>,
+    Json(payload): Json<GoogleAuthRequest>,
+) -> Result<Json<AuthResponseDto>, AppError> {
+    let (email, display_name) = if let Some(cred) = payload.credential.filter(|c| !c.trim().is_empty()) {
+        // Validate Google ID token via Google TokenInfo API
+        let url = format!("https://oauth2.googleapis.com/tokeninfo?id_token={}", cred);
+        let resp = state
+            .http_client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to contact Google: {}", e)))?;
+
+        if !resp.status().is_success() {
+            return Err(AppError::Unauthorized("Invalid Google ID token".to_string()));
+        }
+
+        let body: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?;
+
+        // Optional audience verification if GOOGLE_CLIENT_ID is configured
+        if let Some(expected_aud) = &state.config.google_client_id {
+            let aud = body.get("aud").and_then(|v| v.as_str());
+            if aud != Some(expected_aud.as_str()) {
+                tracing::warn!("Google token audience mismatch: expected {}, got {:?}", expected_aud, aud);
+                return Err(AppError::Unauthorized("Google token audience mismatch".to_string()));
+            }
+        }
+
+        let email = body
+            .get("email")
+            .and_then(|v| v.as_str())
+            .map(|s| s.trim().to_lowercase())
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| AppError::Unauthorized("Google token missing email".to_string()))?;
+
+        let is_verified = body
+            .get("email_verified")
+            .map(|v| v == true || v == "true")
+            .unwrap_or(false);
+
+        if !is_verified {
+            return Err(AppError::Unauthorized("Google account email is not verified".to_string()));
+        }
+
+        let name = body
+            .get("name")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        (email, name)
+    } else if let Some(access_token) = payload.access_token.filter(|t| !t.trim().is_empty()) {
+        // Validate Google Access Token via Google UserInfo API
+        let resp = state
+            .http_client
+            .get("https://www.googleapis.com/oauth2/v3/userinfo")
+            .bearer_auth(access_token)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to contact Google: {}", e)))?;
+
+        if !resp.status().is_success() {
+            return Err(AppError::Unauthorized("Invalid Google access token".to_string()));
+        }
+
+        let body: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?;
+
+        let email = body
+            .get("email")
+            .and_then(|v| v.as_str())
+            .map(|s| s.trim().to_lowercase())
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| AppError::Unauthorized("Google userinfo missing email".to_string()))?;
+
+        let is_verified = body
+            .get("email_verified")
+            .map(|v| v == true || v == "true")
+            .unwrap_or(false);
+
+        if !is_verified {
+            return Err(AppError::Unauthorized("Google account email is not verified".to_string()));
+        }
+
+        let name = body
+            .get("name")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        (email, name)
+    } else {
+        return Err(AppError::BadRequest("Google credential or accessToken is required".to_string()));
+    };
+
+    // Check if user already exists
+    let existing_user = sqlx::query("SELECT id, username FROM users WHERE email = $1")
+        .bind(&email)
+        .fetch_optional(&state.pool)
+        .await?;
+
+    let (user_id, refresh_token) = if let Some(row) = existing_user {
+        let user_id: i64 = row.get("id");
+        let refresh_token = generate_refresh_token();
+        sqlx::query("UPDATE users SET refresh_token = $1, email_verified = TRUE WHERE id = $2")
+            .bind(&refresh_token)
+            .bind(user_id)
+            .execute(&state.pool)
+            .await?;
+        (user_id, refresh_token)
+    } else {
+        // Generate unique username
+        let email_prefix = email.split('@').next().unwrap_or("user");
+        let mut base_username: String = email_prefix
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric() || *c == '_')
+            .collect();
+        if base_username.len() < 5 {
+            base_username.push_str("user");
+        }
+        if base_username.len() > 20 {
+            base_username.truncate(20);
+        }
+
+        let mut chosen_username = base_username.clone();
+        let mut attempts = 0;
+        loop {
+            let exists = sqlx::query("SELECT id FROM users WHERE username = $1")
+                .bind(&chosen_username)
+                .fetch_optional(&state.pool)
+                .await?;
+            if exists.is_none() {
+                break;
+            }
+            attempts += 1;
+            if attempts > 10 {
+                let random_suffix: String = uuid::Uuid::new_v4().simple().to_string().chars().take(6).collect();
+                chosen_username = format!("{}_{}", &base_username[..base_username.len().min(12)], random_suffix);
+                break;
+            } else {
+                chosen_username = format!("{}_{}", &base_username[..base_username.len().min(14)], rand::thread_rng().gen_range(100..9999));
+            }
+        }
+
+        let dummy_password = uuid::Uuid::new_v4().to_string();
+        let password_hash = hash(&dummy_password, DEFAULT_COST)
+            .map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?;
+        let refresh_token = generate_refresh_token();
+
+        let user_row = sqlx::query(
+            r#"
+            INSERT INTO users (email, password_hash, refresh_token, username, email_verified)
+            VALUES ($1, $2, $3, $4, TRUE)
+            RETURNING id
+            "#,
+        )
+        .bind(&email)
+        .bind(password_hash)
+        .bind(&refresh_token)
+        .bind(&chosen_username)
+        .fetch_one(&state.pool)
+        .await?;
+
+        let user_id: i64 = user_row.get("id");
+        let profile_name = display_name.unwrap_or_else(|| email_prefix.to_string());
+
+        sqlx::query(
+            r#"
+            INSERT INTO user_profiles (user_id, name, preferred_color)
+            VALUES ($1, $2, '#534AB7')
+            "#,
+        )
+        .bind(user_id)
+        .bind(&profile_name)
+        .execute(&state.pool)
+        .await?;
+
+        sync_user_meilisearch(&state.config, &state.http_client, user_id, &chosen_username, &profile_name, &[]).await;
+
+        (user_id, refresh_token)
+    };
+
+    let access_token = generate_access_token(user_id, &state.config.jwt_secret)?;
+
+    Ok(Json(AuthResponseDto {
+        access_token,
+        refresh_token,
+        user_id,
+    }))
+}
+
 async fn check_username(
     State(state): State<AppState>,
     Query(query): Query<UsernameQuery>,
@@ -727,6 +922,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/register", post(register))
         .route("/login", post(login))
+        .route("/google", post(google_login))
         .route("/refresh", post(refresh))
         .route("/check-username", get(check_username))
         .route("/users", get(get_users_by_ids))

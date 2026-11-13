@@ -19,6 +19,7 @@ pub struct AppConfig {
     pub gemini_api_key: Option<String>,
     pub gemini_api_url: String,
     pub app_base_url: String,
+    pub google_client_id: Option<String>,
 }
 
 impl AppConfig {
@@ -121,6 +122,10 @@ impl AppConfig {
             .or_else(|_| env::var("APP_BASE_URL"))
             .unwrap_or_else(|_| format!("http://localhost:{}", port));
 
+        let google_client_id = env::var("GOOGLE_CLIENT_ID")
+            .ok()
+            .filter(|s| !s.trim().is_empty());
+
         Self {
             port,
             database_url,
@@ -137,6 +142,7 @@ impl AppConfig {
             gemini_api_key,
             gemini_api_url,
             app_base_url,
+            google_client_id,
         }
     }
 }

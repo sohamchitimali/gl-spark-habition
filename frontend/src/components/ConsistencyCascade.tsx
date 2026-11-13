@@ -155,17 +155,15 @@ export const ConsistencyCascade = () => {
       };
     };
 
-    // EXPENSIVE: reallocates the backing buffers. Only runs on first
-    // mount, or if the window ends up on a bigger screen than we
-    // originally allocated for.
-    const ensureCapacity = (needW: number, needH: number) => {
-      if (needW <= globalAllocatedWidth && needH <= globalAllocatedHeight) return;
-
+    // Sizing and capacity setup: always configures the current canvas
+    // elements on mount and resize, and reallocates buffers if needed.
+    const setupCanvases = (needW: number, needH: number) => {
       const isFirstAllocation = globalAllocatedWidth === 0;
       const dpr = window.devicePixelRatio || 1;
-      const allocW = Math.max(needW, window.screen.width, globalAllocatedWidth);
-      const allocH = Math.max(needH, window.screen.height, globalAllocatedHeight);
+      const allocW = Math.max(needW, window.screen?.width || 0, globalAllocatedWidth);
+      const allocH = Math.max(needH, window.screen?.height || 0, globalAllocatedHeight);
 
+      // ALWAYS size the canvas elements of the currently mounted component!
       for (const c of [bgCanvas, dropCanvas]) {
         c.width = allocW * dpr;
         c.height = allocH * dpr;
@@ -193,9 +191,7 @@ export const ConsistencyCascade = () => {
       globalAllocatedWidth = allocW;
       globalAllocatedHeight = allocH;
 
-      // Reallocating the backing buffer always wipes its pixels, so the
-      // permanent layer needs one full redraw from the data we still
-      // have in memory (nothing was lost, just the pixels).
+      // Ensure the permanent layer is fully drawn on this canvas instance
       redrawAllStacks();
     };
 
@@ -245,7 +241,7 @@ export const ConsistencyCascade = () => {
     const onResize = () => {
       width = window.innerWidth;
       height = window.innerHeight;
-      ensureCapacity(width, height);
+      setupCanvases(width, height);
 
       if (resizeSettleTimer) clearTimeout(resizeSettleTimer);
       resizeSettleTimer = setTimeout(() => {
@@ -254,7 +250,7 @@ export const ConsistencyCascade = () => {
     };
 
     window.addEventListener('resize', onResize);
-    ensureCapacity(width, height); // initial allocation
+    setupCanvases(width, height); // initial allocation and setup
 
     const draw = () => {
       advance();
@@ -272,15 +268,15 @@ export const ConsistencyCascade = () => {
   }, []);
 
   return (
-    <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+    <div className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
       <canvas
         ref={bgCanvasRef}
-        className="absolute top-0 left-0"
+        className="absolute top-0 left-0 pointer-events-none"
         style={{ opacity: 0.6 }}
       />
       <canvas
         ref={dropCanvasRef}
-        className="absolute top-0 left-0"
+        className="absolute top-0 left-0 pointer-events-none"
         style={{ opacity: 0.6 }}
       />
     </div>

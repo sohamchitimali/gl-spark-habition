@@ -5,6 +5,7 @@ import { checkUsername } from '../../api/authApi';
 import habitionLogoGreen from '../../assets/habition_logo_green.svg';
 import Loading from '../../components/Loading';
 import { ConsistencyCascade } from '../../components/ConsistencyCascade';
+import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -224,6 +225,20 @@ const RegisterPage = () => {
                 {loading ? <Loading size={5} padding="0" idleColor="transparent" activeColor="#FFF" /> : 'Create Account'}
               </button>
             </form>
+
+          <div className="flex items-center my-6">
+            <div className="flex-1 h-px" style={{ background: '#363634' }} />
+            <span className="px-3 text-xs uppercase tracking-wider font-semibold" style={{ color: '#888780' }}>
+              Or sign up with
+            </span>
+            <div className="flex-1 h-px" style={{ background: '#363634' }} />
+          </div>
+
+          <GoogleSignInButton
+            mode="signup"
+            onError={(msg) => setError(msg)}
+            onSuccess={() => navigate('/dashboard')}
+          />
 
           <p className="mt-6 text-center text-sm" style={{ color: '#B4B2A9' }}>
             Already have an account?{' '}

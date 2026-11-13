@@ -5,6 +5,7 @@ import Loading from '../../components/Loading';
 import habitionCoin from '../../assets/habition_coin.png';
 import habitionLogoGreen from '../../assets/habition_logo_green.svg';
 import { ConsistencyCascade } from '../../components/ConsistencyCascade';
+import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 
 const LoginPage = () => {
   const { login } = useAuth();
@@ -121,6 +122,20 @@ const LoginPage = () => {
                 {loading ? <Loading size={5} padding="0" idleColor="transparent" activeColor="#FFF" /> : 'Sign in'}
               </button>
             </form>
+
+            <div className="flex items-center my-6">
+              <div className="flex-1 h-px" style={{ background: '#363634' }} />
+              <span className="px-3 text-xs uppercase tracking-wider font-semibold" style={{ color: '#888780' }}>
+                Or continue with
+              </span>
+              <div className="flex-1 h-px" style={{ background: '#363634' }} />
+            </div>
+
+            <GoogleSignInButton
+              mode="signin"
+              onError={(msg) => setError(msg)}
+              onSuccess={() => navigate('/dashboard')}
+            />
 
             <p className="text-center mt-6 text-sm" style={{ color: '#B4B2A9' }}>
               Don't have an account?{' '}

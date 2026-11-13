@@ -1,11 +1,19 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { login as apiLogin, register as apiRegister, type AuthRequest, type AuthResponse } from '../api/authApi';
+import {
+  login as apiLogin,
+  register as apiRegister,
+  googleLogin as apiGoogleLogin,
+  type AuthRequest,
+  type GoogleAuthRequest,
+  type AuthResponse,
+} from '../api/authApi';
 
 interface AuthContextType {
   userId: number | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (data: AuthRequest) => Promise<void>;
+  googleLogin: (data: GoogleAuthRequest) => Promise<void>;
   register: (data: AuthRequest) => Promise<void>;
   logout: () => void;
 }
@@ -65,6 +73,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     persistAuth(res.data);
   };
 
+  const googleLogin = async (data: GoogleAuthRequest) => {
+    const res = await apiGoogleLogin(data);
+    persistAuth(res.data);
+  };
+
   const register = async (data: AuthRequest) => {
     const res = await apiRegister(data);
     persistAuth(res.data);
@@ -78,7 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ userId, isAuthenticated: !!userId, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ userId, isAuthenticated: !!userId, isLoading, login, googleLogin, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

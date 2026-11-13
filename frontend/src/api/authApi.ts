@@ -1,6 +1,7 @@
 import axiosInstance from './axiosConfig';
 
 export interface AuthRequest { email: string; password: string; username?: string; otp?: string; }
+export interface GoogleAuthRequest { credential?: string; accessToken?: string; }
 export interface AuthResponse { accessToken: string; refreshToken: string; userId: number; }
 export interface UserProfile { id: number; email: string; username?: string; name?: string; userTheme?: string; addressDisplay?: string; bio?: string; }
 export interface Profile { 
@@ -35,6 +36,9 @@ export const checkUsername = (username: string, sessionId?: string) =>
 
 export const login = (data: AuthRequest) =>
   axiosInstance.post<AuthResponse>('/auth/login', data);
+
+export const googleLogin = (data: GoogleAuthRequest) =>
+  axiosInstance.post<AuthResponse>('/auth/google', data);
 
 export const refreshToken = (refreshToken: string) =>
   axiosInstance.post<AuthResponse>('/auth/refresh', { refreshToken });

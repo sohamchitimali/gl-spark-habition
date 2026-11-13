@@ -21,6 +21,13 @@ pub struct AuthResponseDto {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct GoogleAuthRequest {
+    pub credential: Option<String>,
+    pub access_token: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RefreshRequestDto {
     pub refresh_token: String,
 }
